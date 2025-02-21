@@ -65,6 +65,7 @@ comment = "/*"~"*/" // ~ = match anything lazily (as little as possible) meaning
 ">"                { return symbol(sym.GT); }
 "=="               { return symbol(sym.EQUAL); }
 "!="               { return symbol(sym.NOTEQUAL); }
+"~"                { return symbol(sym.NOT); }
 "||"               { return symbol(sym.OR); }
 "&&"               { return symbol(sym.AND); }
 "="                { return symbol(sym.ASSIGN); }

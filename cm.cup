@@ -75,18 +75,77 @@ terminal TRUTH, VOID, INTEGER, BOOL;
 terminal WHILE, RETURN, IF, ELSE, SEMI, COMMA, LPAREN, RPAREN, LSQUARE, RSQUARE, LCURLY, RCURLY;
 
 /* operators */
-terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, OR, AND, ASSIGN;
+terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, NOT, OR, AND, ASSIGN;
 
-/* operatees */
+/* operate-ees */
 terminal ID, NUM;
 
 terminal ERROR;
 
 non terminal program;
+non terminal declaration_list, declaration, var_declaration, type_specifier, fun_declaration;
+non terminal fun_prototype, params, param_list, param, compound_stmt, local_declarations, statement_list;
+non terminal statement, expression_stmt, selection_stmt, iteration_stmt, return_stmt, expression, var;
+non terminal obool_expression, abool_expression, ubool_expression, simple_expression, relop, additive_expression;
+non terminal addop, term, mulop, signed_factor, factor, call, args, arg_list;
+
 
 /* ----------------------------Grammar Section-------------------- */
    
 start with program;
 
-program	     ::= ;
+program	     ::= declaration_list;
+
+declaration_list  ::= declaration_list declaration | declaration;
+declaration ::= var_declaration | fun_declaration | fun_prototype;   
+var_declaration ::= type_specifier ID SEMI | type_specifier ID LSQUARE NUM RSQUARE SEMI;
+type_specifier ::= BOOL | INTEGER | VOID;
+fun_declaration ::= type_specifier ID LPAREN params RPAREN compound_stmt;
+
+// TODO: nilexpr
+fun_prototype ::= type_specifier ID LPAREN params RPAREN SEMI;
+
+params ::= param_list | VOID;
+param_list ::= param_list COMMA param | param;
+param ::= type_specifier ID | type_specifier ID LSQUARE RSQUARE;
+
+compound_stmt ::= LCURLY local_declarations statement_list RCURLY;
+local_declarations ::= local_declarations var_declaration | /* e-production */;
+statement_list ::= statement_list statement | /* e-production */;
+statement ::= expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
+
+// TODO: nilexpr
+expression_stmt ::= expression SEMI | SEMI;
+
+// TODO: nilexpr
+selection_stmt ::= IF LPAREN expression RPAREN statement | IF LPAREN expression RPAREN statement ELSE statement;
+
+iteration_stmt ::= WHILE LPAREN expression RPAREN statement;
+
+// TODO: nilexpr
+return_stmt ::= RETURN expression SEMI | RETURN SEMI;
+
+expression ::= var ASSIGN expression | obool_expression;
+var ::= ID | ID LSQUARE expression RSQUARE;
+obool_expression ::= obool_expression OR abool_expression | abool_expression;
+abool_expression ::= abool_expression AND ubool_expression | ubool_expression;
+
+// TODO: nilexpr
+ubool_expression ::= NOT ubool_expression | simple_expression;
+
+simple_expression ::= additive_expression relop additive_expression | additive_expression;
+relop ::= LTEQUAL | LT | GT | GTEQUAL | EQUAL | NOTEQUAL;
+additive_expression ::= additive_expression addop term | term;
+addop ::= PLUS | MINUS;
+term ::= term mulop signed_factor | signed_factor;
+mulop ::= TIMES | OVER;
+
+// TODO: nilexpr
+signed_factor ::= MINUS signed_factor | factor;
+
+factor ::= LPAREN expression RPAREN | var | call | NUM | TRUTH;
+call ::= ID LPAREN args RPAREN;
+
+args ::= arg_list | /* e-production */;
+arg_list ::= arg_list COMMA expression | expression;
 
