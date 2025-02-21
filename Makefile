@@ -1,14 +1,25 @@
+JAVA=java
 JAVAC=javac
 JFLEX=jflex
 # JFLEX=/home/nick/DevelopmentHome/Tools/jflex-1.9.1/bin/jflex
+CLASSPATH=-cp ".;H:/CUP/CUP-master/lib/java-cup-11b-runtime.jar"
+# CLASSPATH=-cp /usr/share/java/cup.jar:.
+CUP=cup
 
-all: Token.class Lexer.class Scanner.class
+all: Main.class
+
+Main.class: parser.java sym.java Lexer.java Scanner.java
+# Main.class: absyn/*.java parser.java sym.java Lexer.java ShowTreeVisitor.java Scanner.java Main.java
 
 %.class: %.java
-	$(JAVAC) $^
+	$(JAVAC) $(CLASSPATH) $^
 
-Lexer.java: tiny.flex
-	$(JFLEX) tiny.flex
+Lexer.java: cm.flex
+	$(JFLEX) cm.flex
+
+parser.java: cm.cup
+	#$(CUP) -dump -expect 3 cm.cup
+	$(CUP) -expect 3 cm.cup
 
 clean:
-	rm -f Lexer.java *.class *~
+	rm -f parser.java Lexer.java sym.java *.class absyn/*.class *~
