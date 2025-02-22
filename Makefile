@@ -8,8 +8,8 @@ CUP=cup
 
 all: Main.class
 
-Main.class: parser.java sym.java Lexer.java Scanner.java
-# Main.class: absyn/*.java parser.java sym.java Lexer.java ShowTreeVisitor.java Scanner.java Main.java
+# Main.class: parser.java sym.java Lexer.java Scanner.java
+Main.class: absyn/*.java parser.java sym.java Lexer.java ShowTreeVisitor.java Scanner.java Main.java
 
 %.class: %.java
 	$(JAVAC) $(CLASSPATH) $^
@@ -18,8 +18,11 @@ Lexer.java: cm.flex
 	$(JFLEX) cm.flex
 
 parser.java: cm.cup
-	#$(CUP) -dump -expect 3 cm.cup
 	$(CUP) -expect 3 cm.cup
 
 clean:
 	rm -f parser.java Lexer.java sym.java *.class absyn/*.class *~
+
+clean-win: 
+	del *.class parser.java Lexer.java sym.java
+	del .\absyn\*.class
