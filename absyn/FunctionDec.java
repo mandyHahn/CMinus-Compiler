@@ -6,6 +6,7 @@ public class FunctionDec extends Dec {
 	public VarDecList params;
 	public Exp body;
 
+	// Note: body can be NilExp
 	public FunctionDec( int row, int col, NameTy result, String func, VarDecList params, Exp body ) {
 		this.row = row;
 		this.col = col;

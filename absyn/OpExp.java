@@ -23,6 +23,7 @@ public class OpExp extends Exp {
   public int op;
   public Exp right;
 
+  // Note: left can be NilExp
   public OpExp( int row, int col, Exp left, int op, Exp right ) {
     this.row = row;
     this.col = col;

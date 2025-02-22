@@ -5,6 +5,7 @@ public class IfExp extends Exp {
   public ExpList thenpart;
   public ExpList elsepart;
 
+  // Note: elsepart can be NilExp
   public IfExp( int row, int col, Exp test, ExpList thenpart, ExpList elsepart ) {
     this.row = row;
     this.col = col;
