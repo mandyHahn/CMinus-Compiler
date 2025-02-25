@@ -130,7 +130,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
     indent( level );
     System.out.println( "CallExp: " + exp.func );
     level++;
-    exp.args.accept(this, level);
+    if (exp.args != null) {
+      exp.args.accept(this, level);
+    }
   }
 
   @Override
@@ -138,7 +140,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
     indent( level );
     System.out.println( "CompoundExp:" );
     level++;
-    exp.decs.accept(this, level);
+    if (exp.decs != null) {
+      exp.decs.accept(this, level);
+    }
     exp.exps.accept(this, level);
   }
 
@@ -203,7 +207,7 @@ public class ShowTreeVisitor implements AbsynVisitor {
 
   @Override
   public void visit(VarDecList exp, int level) {
-    while( exp != null ) {
+    while( exp != null && exp.head != null ) {
       exp.head.accept( this, level );
       exp = exp.tail;
     } 

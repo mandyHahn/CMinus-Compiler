@@ -8,7 +8,7 @@ public class WhileExp extends Exp {
     this.row = row;
     this.col = col;
     this.test = test;
-	this.body = body;
+    this.body = body;
   }
 
   public void accept( AbsynVisitor visitor, int level ) {

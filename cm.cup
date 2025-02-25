@@ -2,150 +2,447 @@
   Created by: Fei Song
   File Name: tiny.cup
 */
-   
-   
+/* ----------------------------------- ^^^^^ Do we get rid of this?????? --------------------- */
+  
 /* ----------------------Preliminary Declarations Section--------------------*/
-   
-/* import absyn.*; */
-   
+  
+import absyn.*;
+  
 /* Parser code to change the way the parser reports errors (include
-   line and column number of the error). */
+  line and column number of the error). */
 parser code {:
-    
-    /* Change the method report_error so it will display the line and
-       column of where the error occurred in the input as well as the
-       reason for the error which is passed into the method in the
-       String 'message'. */
-    public void report_error(String message, Object info) {
    
-        /* Create a StringBuffer called 'm' with the string 'Error' in it. */
-        StringBuffer m = new StringBuffer("Error");
-   
-        /* Check if the information passed to the method is the same
-           type as the type java_cup.runtime.Symbol. */
-        if (info instanceof java_cup.runtime.Symbol) {
-            /* Declare a java_cup.runtime.Symbol object 's' with the
-               information in the object info that is being typecasted
-               as a java_cup.runtime.Symbol object. */
-            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
-   
-            /* Check if the line number in the input is greater or
-               equal to zero. */
-            if (s.left >= 0) {                
-                /* Add to the end of the StringBuffer error message
-                   the line number of the error in the input. */
-                m.append(" in line "+(s.left+1));   
-                /* Check if the column number in the input is greater
-                   or equal to zero. */
-                if (s.right >= 0)                    
-                    /* Add to the end of the StringBuffer error message
-                       the column number of the error in the input. */
-                    m.append(", column "+(s.right+1));
-            }
+   /* Change the method report_error so it will display the line and
+     column of where the error occurred in the input as well as the
+     reason for the error which is passed into the method in the
+     String 'message'. */
+   public void report_error(String message, Object info) {
+  
+      /* Create a StringBuffer called 'm' with the string 'Error' in it. */
+      StringBuffer m = new StringBuffer("Error");
+  
+      /* Check if the information passed to the method is the same
+        type as the type java_cup.runtime.Symbol. */
+      if (info instanceof java_cup.runtime.Symbol) {
+        /* Declare a java_cup.runtime.Symbol object 's' with the
+          information in the object info that is being typecasted
+          as a java_cup.runtime.Symbol object. */
+        java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+  
+        /* Check if the line number in the input is greater or
+          equal to zero. */
+        if (s.left >= 0) {           
+           /* Add to the end of the StringBuffer error message
+             the line number of the error in the input. */
+           m.append(" in line "+(s.left+1));  
+           /* Check if the column number in the input is greater
+             or equal to zero. */
+           if (s.right >= 0)              
+              /* Add to the end of the StringBuffer error message
+                the column number of the error in the input. */
+              m.append(", column "+(s.right+1));
         }
-   
-        /* Add to the end of the StringBuffer error message created in
-           this method the message that was passed into this method. */
-        m.append(" : "+message);
-   
-        /* Print the contents of the StringBuffer 'm', which contains
-           an error message, out on a line. */
-        System.err.println(m);
-    }
-   
-    /* Change the method report_fatal_error so when it reports a fatal
-       error it will display the line and column number of where the
-       fatal error occurred in the input as well as the reason for the
-       fatal error which is passed into the method in the object
-       'message' and then exit.*/
-    public void report_fatal_error(String message, Object info) {
-        report_error(message, info);
-        System.exit(1);
-    }
+      }
+  
+      /* Add to the end of the StringBuffer error message created in
+        this method the message that was passed into this method. */
+      m.append(" : "+message);
+  
+      /* Print the contents of the StringBuffer 'm', which contains
+        an error message, out on a line. */
+      System.err.println(m);
+   }
+  
+   /* Change the method report_fatal_error so when it reports a fatal
+     error it will display the line and column number of where the
+     fatal error occurred in the input as well as the reason for the
+     fatal error which is passed into the method in the object
+     'message' and then exit.*/
+   public void report_fatal_error(String message, Object info) {
+      report_error(message, info);
+      System.exit(1);
+   }
 
 :};
-   
-   
+  
+  
 /* ------------Declaration of Terminals and Non Terminals Section----------- */
-   
-/* types */
-terminal TRUTH, VOID, INTEGER, BOOL;
-
-/* control */
+  
+terminal VOID, INTEGER, BOOL;
 terminal WHILE, RETURN, IF, ELSE, SEMI, COMMA, LPAREN, RPAREN, LSQUARE, RSQUARE, LCURLY, RCURLY;
-
-/* operators */
 terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, NOT, OR, AND, ASSIGN;
 
-/* operate-ees */
-terminal ID, NUM;
+terminal String ID, NUM, TRUTH;
 
 terminal ERROR;
 
-non terminal program;
-non terminal declaration_list, declaration, var_declaration, type_specifier, fun_declaration;
-non terminal fun_prototype, params, param_list, param, compound_stmt, local_declarations, statement_list;
-non terminal statement, expression_stmt, selection_stmt, iteration_stmt, return_stmt, expression, var;
-non terminal obool_expression, abool_expression, ubool_expression, simple_expression, relop, additive_expression;
-non terminal addop, term, mulop, signed_factor, factor, call, args, arg_list;
-
+non terminal DecList program, declaration_list;
+non terminal Dec declaration, fun_declaration, fun_prototype;
+non terminal Exp compound_stmt, statement, expression_stmt, selection_stmt, iteration_stmt, return_stmt, expression;
+non terminal Exp obool_expression, abool_expression, ubool_expression, simple_expression, additive_expression;
+non terminal Exp term, signed_factor, factor, call;
+non terminal ExpList statement_list, args, arg_list;
+non terminal NameTy type_specifier;
+non terminal VarDecList params, param_list, local_declarations;
+non terminal VarDec param, var_declaration;
+non terminal VarExp var;
+non terminal Integer relop, addop, mulop;
 
 /* ----------------------------Grammar Section-------------------- */
-   
+  
 start with program;
 
-program	     ::= declaration_list;
+program ::= declaration_list:e
+  {: RESULT = e; :};
 
-declaration_list  ::= declaration_list declaration | declaration;
-declaration ::= var_declaration | fun_declaration | fun_prototype;   
-var_declaration ::= type_specifier ID SEMI | type_specifier ID LSQUARE NUM RSQUARE SEMI;
-type_specifier ::= BOOL | INTEGER | VOID;
-fun_declaration ::= type_specifier ID LPAREN params RPAREN compound_stmt;
+declaration_list ::= declaration_list:d1 declaration:d2
+  {:
+    DecList d = d1;
+    while (d.tail != null)
+      d = d.tail;
+    d.tail = new DecList(d2, null);
+    RESULT = d1;
+  :} 
+| declaration:d
+  {:
+    RESULT = new DecList(d, null);
+  :};
+
+declaration ::= var_declaration:v
+  {:
+    RESULT = v;
+  :}
+| fun_declaration:f 
+  {:
+    RESULT = f;
+  :}
+| fun_prototype:f
+  {:
+    RESULT = f;
+  :};
+
+var_declaration ::= type_specifier:t ID:i SEMI
+  {:
+    RESULT = new SimpleDec(tleft, tright, t, i);
+  :} 
+| type_specifier:t ID:i LSQUARE NUM:n RSQUARE SEMI
+  {:
+    RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
+  :};
+
+type_specifier ::= BOOL:b 
+  {:
+    RESULT = new NameTy(bleft, bright, NameTy.BOOL);
+  :}
+| INTEGER:i 
+  {:
+    RESULT = new NameTy(ileft, iright, NameTy.INT);
+  :}
+| VOID:v
+  {:
+    RESULT = new NameTy(vleft, vright, NameTy.VOID);
+  :};
+
+fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
+  {:
+    RESULT = new FunctionDec(tleft, tright, t, i, p, s);
+  :};
 
 // TODO: nilexpr
-fun_prototype ::= type_specifier ID LPAREN params RPAREN SEMI;
+fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
+  {:
+    RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
+  :};
 
-params ::= param_list | VOID;
-param_list ::= param_list COMMA param | param;
-param ::= type_specifier ID | type_specifier ID LSQUARE RSQUARE;
+params ::= param_list:p
+  {:
+    RESULT = p;
+  :}
+| VOID:v
+  {:
+    RESULT = new VarDecList(null, null);
+  :};
 
-compound_stmt ::= LCURLY local_declarations statement_list RCURLY;
-local_declarations ::= local_declarations var_declaration | /* e-production */;
-statement_list ::= statement_list statement | /* e-production */;
-statement ::= expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
+param_list ::= param_list:p1 COMMA param:p2 
+  {:
+    VarDecList p = p1;
+    while (p.tail != null)
+      p = p.tail;
+    p.tail = new VarDecList(p2, null);
+    RESULT = p1;
+  :}
+| param:p
+  {:
+    RESULT = new VarDecList(null, null);
+  :};
+
+param ::= type_specifier:t ID:i 
+  {:
+    RESULT = new SimpleDec(tleft, tright, t, i);
+  :}
+| type_specifier:t ID:i LSQUARE RSQUARE
+  {:
+    RESULT = new ArrayDec(tleft, tright, t, i, 0);
+  :};
+
+compound_stmt ::= LCURLY local_declarations:l statement_list:s RCURLY
+  {:
+    RESULT = new CompoundExp(lleft, lright, l, s);
+  :};
+
+local_declarations ::= local_declarations:p1 var_declaration:p2 
+  {:
+    VarDecList p = p1;
+    if (p == null) {
+      RESULT = new VarDecList(p2, null);
+    } else {
+      while (p.tail != null)
+        p = p.tail;
+      p.tail = new VarDecList(p2, null);
+      RESULT = p1;
+    }
+  :}
+| /* e-production */;
+
+statement_list ::= statement_list:e1 statement:e2 
+  {:
+    ExpList e = e1;
+    if (e == null) {
+      RESULT = new ExpList(e2, null);
+    } else {
+      while (e.tail != null)
+        e = e.tail;
+      e.tail = new ExpList(e2, null);
+      RESULT = e1;
+    }
+  :}
+| /* e-production */;
+
+statement ::= expression_stmt:e
+  {:
+    RESULT = e;
+  :}
+| compound_stmt:c
+  {:
+    RESULT = c;
+  :}
+| selection_stmt:s 
+  {:
+    RESULT = s;
+  :}
+| iteration_stmt:i
+  {:
+    RESULT = i;
+  :}
+| return_stmt:r
+  {:
+    RESULT = r;
+  :};
 
 // TODO: nilexpr
-expression_stmt ::= expression SEMI | SEMI;
+expression_stmt ::= expression:e SEMI 
+  {:
+    RESULT = e;
+  :}
+| SEMI:s
+  {:
+    // This is likely wrong?
+    RESULT = new NilExp(sleft, sright);
+  :};
 
 // TODO: nilexpr
-selection_stmt ::= IF LPAREN expression RPAREN statement | IF LPAREN expression RPAREN statement ELSE statement;
+selection_stmt ::= IF:i LPAREN expression:e RPAREN statement:s 
+  {:
+    RESULT = new IfExp(ileft, iright, e, s, new NilExp(ileft, iright));
+  :}
+| IF:i LPAREN expression:e RPAREN statement:s1 ELSE statement:s2
+  {:
+    RESULT = new IfExp(ileft, iright, e, s1, s2);
+  :};
 
-iteration_stmt ::= WHILE LPAREN expression RPAREN statement;
-
-// TODO: nilexpr
-return_stmt ::= RETURN expression SEMI | RETURN SEMI;
-
-expression ::= var ASSIGN expression | obool_expression;
-var ::= ID | ID LSQUARE expression RSQUARE;
-obool_expression ::= obool_expression OR abool_expression | abool_expression;
-abool_expression ::= abool_expression AND ubool_expression | ubool_expression;
-
-// TODO: nilexpr
-ubool_expression ::= NOT ubool_expression | simple_expression;
-
-simple_expression ::= additive_expression relop additive_expression | additive_expression;
-relop ::= LTEQUAL | LT | GT | GTEQUAL | EQUAL | NOTEQUAL;
-additive_expression ::= additive_expression addop term | term;
-addop ::= PLUS | MINUS;
-term ::= term mulop signed_factor | signed_factor;
-mulop ::= TIMES | OVER;
+iteration_stmt ::= WHILE:w LPAREN expression:e RPAREN statement:s
+  {:
+    RESULT = new WhileExp(wleft, wright, e, s);
+  :};
 
 // TODO: nilexpr
-signed_factor ::= MINUS signed_factor | factor;
+return_stmt ::= RETURN:r expression:e SEMI 
+  {:
+    RESULT = new ReturnExp(rleft, rright, e);
+  :}
+| RETURN:r SEMI
+  {:
+    RESULT = new ReturnExp(rleft, rright, new NilExp(rleft, rright));
+  :};
 
-factor ::= LPAREN expression RPAREN | var | call | NUM | TRUTH;
-call ::= ID LPAREN args RPAREN;
+expression ::= var:v ASSIGN expression:e 
+  {:
+    RESULT = new AssignExp(vleft, vright, v, e);
+  :}
+| obool_expression:o
+  {:
+    RESULT = o;
+  :};
 
-args ::= arg_list | /* e-production */;
-arg_list ::= arg_list COMMA expression | expression;
+var ::= ID:i
+  {:
+    RESULT = new VarExp(ileft, iright, new SimpleVar(ileft, iright, i));
+  :} 
+| ID:i LSQUARE expression:e RSQUARE
+  {:
+    RESULT = new VarExp(ileft, iright, new IndexVar(ileft, iright, i, e));
+  :};
+
+obool_expression ::= obool_expression:o OR abool_expression:a 
+  {:
+    RESULT = new OpExp(oleft, oright, o, OpExp.OR, a);
+  :}
+| abool_expression:a
+  {:
+    RESULT = a;
+  :};
+
+abool_expression ::= abool_expression:a AND ubool_expression:u 
+  {:
+    RESULT = new OpExp(aleft, aright, a, OpExp.AND, u);
+  :}
+| ubool_expression:u
+  {:
+    RESULT = u;
+  :};
+
+// TODO: nilexpr
+ubool_expression ::= NOT:n ubool_expression:u
+  {:
+    RESULT = new OpExp(nleft, nright, new NilExp(nleft, nright), OpExp.NOT, u);
+  :} 
+| simple_expression:s
+  {:
+    RESULT = s;
+  :};
+
+simple_expression ::= additive_expression:a relop:r additive_expression:e 
+  {:
+    RESULT = new OpExp(aleft, aright, a, r, e);
+  :}
+| additive_expression:a
+  {:
+    RESULT = a;
+  :};
+
+relop ::= LTEQUAL
+  {:
+    RESULT = OpExp.LE;
+  :} 
+| LT 
+  {:
+    RESULT = OpExp.LT;
+  :}
+| GT 
+  {:
+    RESULT = OpExp.GT;
+  :}
+| GTEQUAL
+  {:
+    RESULT = OpExp.GE;
+  :} 
+| EQUAL
+  {:
+    RESULT = OpExp.EQ;
+  :} 
+| NOTEQUAL
+  {:
+    RESULT = OpExp.NE;
+  :};
+
+additive_expression ::= additive_expression:e addop:o term:t 
+  {:
+    RESULT = new OpExp(eleft, eright, e, o, t);
+  :}
+| term:t
+  {:
+    RESULT = t;
+  :};
+
+addop ::= PLUS
+  {:
+    RESULT = OpExp.PLUS;
+  :} 
+| MINUS
+  {:
+    RESULT = OpExp.MINUS;
+  :};
+
+term ::= term:t mulop:o signed_factor:s 
+  {:
+    RESULT = new OpExp(tleft, tright, t, o, s);
+  :}
+| signed_factor:s
+  {:
+    RESULT = s;
+  :};
+
+mulop ::= TIMES:t
+  {:
+    RESULT = OpExp.MUL;
+  :} 
+| OVER
+  {:
+    RESULT = OpExp.DIV;
+  :};
+
+// TODO: nilexpr
+signed_factor ::= MINUS:m signed_factor:s
+  {:
+    RESULT = new OpExp(mleft, mright, new NilExp(mleft, mright), OpExp.UMINUS, s);
+  :} 
+| factor:f
+  {:
+    RESULT = f;
+  :};
+
+factor ::= LPAREN:l expression:e RPAREN
+  {:
+    RESULT = e;
+  :} 
+| var:v
+  {:
+    RESULT = v;
+  :} 
+| call:c
+  {:
+    RESULT = c;
+  :} 
+| NUM:n
+  {:
+    RESULT = new IntExp(nleft, nright, Integer.parseInt(n));
+  :}
+| TRUTH:t
+  {:
+    RESULT = new BoolExp(tleft, tright, Boolean.parseBoolean(t));
+  :};
+
+call ::= ID:i LPAREN args:a RPAREN
+  {:
+    RESULT = new CallExp(ileft, iright, i, a);
+  :};
+
+args ::= arg_list:a
+  {:
+    RESULT = a;
+  :} 
+| /* e-production */;
+
+arg_list ::= arg_list:a COMMA expression:e1
+  {:
+    ExpList e = a;
+    while (e.tail != null)
+      e = e.tail;
+    e.tail = new ExpList(e1, null);
+    RESULT = a;
+  :} 
+| expression:e
+  {:
+    RESULT = new ExpList(e, null);
+  :};
 
