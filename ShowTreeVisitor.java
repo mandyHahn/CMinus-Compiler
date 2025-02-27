@@ -104,9 +104,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
   }
 
   public void visit( VarExp exp, int level ) {
-    indent( level );
-    System.out.println( "VarExp:" );
-    level++;
+    // indent( level );
+    // System.out.println( "VarExp:" );
+    // level++;
     exp.variable.accept( this, level);;
   }
 
@@ -120,9 +120,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
   @Override
   public void visit(ArrayDec exp, int level) {
     indent( level );
-    System.out.println( "ArrayDec: " + exp.name + " " + exp.size );
-    level++;
-    exp.typ.accept( this, level );
+    System.out.print( "ArrayDec: " + exp.name + " " + exp.size + ":");
+    // level++;
+    exp.typ.accept( this, level ); // prints on same line then adds newline
   }
 
   @Override
@@ -137,9 +137,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
 
   @Override
   public void visit(CompoundExp exp, int level) {
-    indent( level );
-    System.out.println( "CompoundExp:" );
-    level++;
+    // indent( level );
+    // System.out.println( "CompoundExp:" );
+    // level++;
     if (exp.decs != null) {
       exp.decs.accept(this, level);
     }
@@ -157,10 +157,11 @@ public class ShowTreeVisitor implements AbsynVisitor {
   @Override
   public void visit(FunctionDec exp, int level) {
     indent( level );
-    System.out.println( "FunctionDec: " + exp.func );
+    System.out.print( "FunctionDec: " + exp.func + ":");
+    exp.result.accept(this, level); // prints on same line then adds newline
+    exp.params.accept(this, level); 
+
     level++;
-    exp.result.accept(this, level);
-    exp.params.accept(this, level);
     exp.body.accept(this, level);
   }
 
@@ -174,17 +175,17 @@ public class ShowTreeVisitor implements AbsynVisitor {
 
   @Override
   public void visit(NameTy exp, int level) {
-    indent( level );
-    System.out.print( "NameTy: ");
+    // indent( level );
+    // System.out.print( "NameTy: ");
     switch( exp.typ ) {
       case NameTy.BOOL:
-        System.out.println( " bool " );
+        System.out.println( "bool" );
         break;
       case NameTy.INT:
-        System.out.println( " int " );
+        System.out.println( "int" );
         break;
       case NameTy.VOID:
-        System.out.println( " void " );
+        System.out.println( "void" );
         break;
       default:
         System.out.println( "Unrecognized type at line " + exp.row + " and column " + exp.col);
@@ -194,9 +195,9 @@ public class ShowTreeVisitor implements AbsynVisitor {
   @Override
   public void visit(SimpleDec exp, int level) {
     indent( level );
-    System.out.println( "SimpleDec: " + exp.name );
-    level++;
-    exp.typ.accept(this, level);
+    System.out.print( "SimpleDec: " + exp.name + ":");
+    // level++;
+    exp.typ.accept(this, level); // prints on same line then adds newline
   }
 
   @Override

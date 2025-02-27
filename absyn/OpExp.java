@@ -12,9 +12,9 @@ public class OpExp extends Exp {
   public final static int NE     = 6;
   public final static int LT     = 7;
   public final static int LE     = 8;
-
   public final static int GT     = 9;
   public final static int GE     = 10;
+  
   public final static int NOT    = 11;
   public final static int AND    = 12;
   public final static int OR     = 13;
