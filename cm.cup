@@ -70,7 +70,7 @@ parser code {:
   
 terminal VOID, INTEGER, BOOL;
 terminal WHILE, RETURN, IF, ELSE, SEMI, COMMA, LPAREN, RPAREN, LSQUARE, RSQUARE, LCURLY, RCURLY;
-terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, NOT, OR, AND, ASSIGN;
+terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, NOT, OR, AND, ASSIGN, UMINUS;
 
 terminal String ID, NUM, TRUTH;
 
@@ -79,14 +79,20 @@ terminal ERROR;
 non terminal DecList program, declaration_list;
 non terminal Dec declaration, fun_declaration, fun_prototype;
 non terminal Exp compound_stmt, statement, expression_stmt, selection_stmt, iteration_stmt, return_stmt, expression;
-non terminal Exp obool_expression, abool_expression, ubool_expression, simple_expression, additive_expression;
-non terminal Exp term, signed_factor, factor, call;
+non terminal Exp factor, call;
 non terminal ExpList statement_list, args, arg_list;
 non terminal NameTy type_specifier;
 non terminal VarDecList params, param_list, local_declarations;
 non terminal VarDec param, var_declaration;
 non terminal VarExp var;
-non terminal Integer relop, addop, mulop;
+
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence nonassoc LT, GT, EQUAL, LTEQUAL, GTEQUAL, NOTEQUAL;
+precedence left PLUS, MINUS;
+precedence left TIMES, OVER; 
+precedence right UMINUS; 
 
 /* ----------------------------Grammar Section-------------------- */
   
@@ -275,15 +281,6 @@ return_stmt ::= RETURN:r expression:e SEMI
     RESULT = new ReturnExp(rleft, rright, new NilExp(rleft, rright));
   :};
 
-expression ::= var:v ASSIGN expression:e 
-  {:
-    RESULT = new AssignExp(vleft, vright, v, e);
-  :}
-| obool_expression:o
-  {:
-    RESULT = o;
-  :};
-
 var ::= ID:i
   {:
     RESULT = new VarExp(ileft, iright, new SimpleVar(ileft, iright, i));
@@ -293,109 +290,67 @@ var ::= ID:i
     RESULT = new VarExp(ileft, iright, new IndexVar(ileft, iright, i, e));
   :};
 
-obool_expression ::= obool_expression:o OR abool_expression:a 
+expression ::= var:v ASSIGN expression:e 
+  {:
+    RESULT = new AssignExp(vleft, vright, v, e);
+  :}
+| expression:o OR expression:a 
   {:
     RESULT = new OpExp(oleft, oright, o, OpExp.OR, a);
   :}
-| abool_expression:a
-  {:
-    RESULT = a;
-  :};
-
-abool_expression ::= abool_expression:a AND ubool_expression:u 
+| expression:a AND expression:u 
   {:
     RESULT = new OpExp(aleft, aright, a, OpExp.AND, u);
   :}
-| ubool_expression:u
-  {:
-    RESULT = u;
-  :};
-
-// TODO: nilexpr
-ubool_expression ::= NOT:n ubool_expression:u
+| NOT:n expression:u
   {:
     RESULT = new OpExp(nleft, nright, new NilExp(nleft, nright), OpExp.NOT, u);
   :} 
-| simple_expression:s
+| expression:a LTEQUAL expression:e 
   {:
-    RESULT = s;
-  :};
-
-simple_expression ::= additive_expression:a relop:r additive_expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, r, e);
+    RESULT = new OpExp(aleft, aright, a, OpExp.LE, e);
   :}
-| additive_expression:a
+| expression:a LT expression:e 
   {:
-    RESULT = a;
-  :};
-
-relop ::= LTEQUAL
-  {:
-    RESULT = OpExp.LE;
-  :} 
-| LT 
-  {:
-    RESULT = OpExp.LT;
+    RESULT = new OpExp(aleft, aright, a, OpExp.LT, e);
   :}
-| GT 
+| expression:a GT expression:e 
   {:
-    RESULT = OpExp.GT;
+    RESULT = new OpExp(aleft, aright, a, OpExp.GT, e);
   :}
-| GTEQUAL
+| expression:a GTEQUAL expression:e 
   {:
-    RESULT = OpExp.GE;
-  :} 
-| EQUAL
-  {:
-    RESULT = OpExp.EQ;
-  :} 
-| NOTEQUAL
-  {:
-    RESULT = OpExp.NE;
-  :};
-
-additive_expression ::= additive_expression:e addop:o term:t 
-  {:
-    RESULT = new OpExp(eleft, eright, e, o, t);
+    RESULT = new OpExp(aleft, aright, a, OpExp.GE, e);
   :}
-| term:t
+| expression:a EQUAL expression:e 
   {:
-    RESULT = t;
-  :};
-
-addop ::= PLUS
-  {:
-    RESULT = OpExp.PLUS;
-  :} 
-| MINUS
-  {:
-    RESULT = OpExp.MINUS;
-  :};
-
-term ::= term:t mulop:o signed_factor:s 
-  {:
-    RESULT = new OpExp(tleft, tright, t, o, s);
+    RESULT = new OpExp(aleft, aright, a, OpExp.EQ, e);
   :}
-| signed_factor:s
+| expression:a NOTEQUAL expression:e 
   {:
-    RESULT = s;
-  :};
-
-mulop ::= TIMES:t
+    RESULT = new OpExp(aleft, aright, a, OpExp.NE, e);
+  :}
+| expression:e PLUS expression:t 
   {:
-    RESULT = OpExp.MUL;
-  :} 
-| OVER
+    RESULT = new OpExp(eleft, eright, e, OpExp.PLUS, t);
+  :}
+| expression:e MINUS expression:t 
   {:
-    RESULT = OpExp.DIV;
-  :};
-
-// TODO: nilexpr
-signed_factor ::= MINUS:m signed_factor:s
+    RESULT = new OpExp(eleft, eright, e, OpExp.MINUS, t);
+  :}
+| expression:t TIMES expression:s 
+  {:
+    RESULT = new OpExp(tleft, tright, t, OpExp.MUL, s);
+  :}
+| expression:t OVER expression:s 
+  {:
+    RESULT = new OpExp(tleft, tright, t, OpExp.DIV, s);
+  :}
+| MINUS:m expression:s
   {:
     RESULT = new OpExp(mleft, mright, new NilExp(mleft, mright), OpExp.UMINUS, s);
   :} 
+  %prec UMINUS
 | factor:f
   {:
     RESULT = f;
