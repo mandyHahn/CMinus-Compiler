@@ -86,6 +86,7 @@ non terminal VarDecList params, param_list, local_declarations;
 non terminal VarDec param, var_declaration;
 non terminal VarExp var;
 
+precedence right ASSIGN;
 precedence left OR;
 precedence left AND;
 precedence right NOT;
@@ -101,303 +102,322 @@ start with program;
 program ::= declaration_list:e
   {: RESULT = e; :};
 
+
 declaration_list ::= declaration_list:d1 declaration:d2
-  {:
-    DecList d = d1;
-    while (d.tail != null)
-      d = d.tail;
-    d.tail = new DecList(d2, null);
-    RESULT = d1;
-  :} 
-| declaration:d
-  {:
-    RESULT = new DecList(d, null);
-  :};
+    {:
+      DecList d = d1;
+      while (d.tail != null)
+        d = d.tail;
+      d.tail = new DecList(d2, null);
+      RESULT = d1;
+    :} 
+  | declaration:d
+    {:
+      RESULT = new DecList(d, null);
+    :};
 
 declaration ::= var_declaration:v
-  {:
-    RESULT = v;
-  :}
-| fun_declaration:f 
-  {:
-    RESULT = f;
-  :}
-| fun_prototype:f
-  {:
-    RESULT = f;
-  :};
+    {:
+      RESULT = v;
+    :}
+  | fun_declaration:f 
+    {:
+      RESULT = f;
+    :}
+  | fun_prototype:f
+    {:
+      RESULT = f;
+    :};
+
 
 var_declaration ::= type_specifier:t ID:i SEMI
-  {:
-    RESULT = new SimpleDec(tleft, tright, t, i);
-  :} 
-| type_specifier:t ID:i LSQUARE NUM:n RSQUARE SEMI
-  {:
-    RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
-  :};
+    {:
+      RESULT = new SimpleDec(tleft, tright, t, i);
+    :} 
+  | type_specifier:t ID:i LSQUARE NUM:n RSQUARE SEMI
+    {:
+      RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
+    :}
+
 
 type_specifier ::= BOOL:b 
-  {:
-    RESULT = new NameTy(bleft, bright, NameTy.BOOL);
-  :}
-| INTEGER:i 
-  {:
-    RESULT = new NameTy(ileft, iright, NameTy.INT);
-  :}
-| VOID:v
-  {:
-    RESULT = new NameTy(vleft, vright, NameTy.VOID);
-  :};
+    {:
+      RESULT = new NameTy(bleft, bright, NameTy.BOOL);
+    :}
+  | INTEGER:i 
+    {:
+      RESULT = new NameTy(ileft, iright, NameTy.INT);
+    :}
+  | VOID:v
+    {:
+      RESULT = new NameTy(vleft, vright, NameTy.VOID);
+    :};
+
 
 fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
-  {:
-    RESULT = new FunctionDec(tleft, tright, t, i, p, s);
-  :};
+    {:
+      RESULT = new FunctionDec(tleft, tright, t, i, p, s);
+    :};
+
 
 // TODO: nilexpr
 fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
-  {:
-    RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
-  :};
+    {:
+      RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
+    :};
+
 
 params ::= param_list:p
-  {:
-    RESULT = p;
-  :}
-| VOID:v
-  {:
-    RESULT = new VarDecList(null, null);
-  :};
+    {:
+      RESULT = p;
+    :}
+  | VOID:v
+    {:
+      RESULT = null;
+    :};
+
 
 param_list ::= param_list:p1 COMMA param:p2 
-  {:
-    VarDecList p = p1;
-    while (p.tail != null)
-      p = p.tail;
-    p.tail = new VarDecList(p2, null);
-    RESULT = p1;
-  :}
-| param:p
-  {:
-    RESULT = new VarDecList(null, null);
-  :};
-
-param ::= type_specifier:t ID:i 
-  {:
-    RESULT = new SimpleDec(tleft, tright, t, i);
-  :}
-| type_specifier:t ID:i LSQUARE RSQUARE
-  {:
-    RESULT = new ArrayDec(tleft, tright, t, i, 0);
-  :};
-
-compound_stmt ::= LCURLY local_declarations:l statement_list:s RCURLY
-  {:
-    RESULT = new CompoundExp(lleft, lright, l, s);
-  :};
-
-local_declarations ::= local_declarations:p1 var_declaration:p2 
-  {:
-    VarDecList p = p1;
-    if (p == null) {
-      RESULT = new VarDecList(p2, null);
-    } else {
+    {:
+      VarDecList p = p1;
       while (p.tail != null)
         p = p.tail;
       p.tail = new VarDecList(p2, null);
       RESULT = p1;
-    }
-  :}
-| /* e-production */;
+    :}
+  | param:p
+    {:
+      RESULT = new VarDecList(p, null);
+    :};
+
+
+param ::= type_specifier:t ID:i 
+    {:
+      RESULT = new SimpleDec(tleft, tright, t, i);
+    :}
+  | type_specifier:t ID:i LSQUARE RSQUARE
+    {:
+      RESULT = new ArrayDec(tleft, tright, t, i, 0);
+    :};
+
+
+compound_stmt ::= LCURLY local_declarations:l statement_list:s RCURLY
+    {:
+      RESULT = new CompoundExp(lleft, lright, l, s);
+    :};
+
+
+local_declarations ::= local_declarations:p1 var_declaration:p2 
+    {:
+      VarDecList p = p1;
+      if (p == null) {
+        RESULT = new VarDecList(p2, null);
+      } else {
+        while (p.tail != null)
+          p = p.tail;
+        p.tail = new VarDecList(p2, null);
+        RESULT = p1;
+      }
+    :}
+  | /* e-production */;
+
 
 statement_list ::= statement_list:e1 statement:e2 
-  {:
-    ExpList e = e1;
-    if (e == null) {
-      RESULT = new ExpList(e2, null);
-    } else {
-      while (e.tail != null)
-        e = e.tail;
-      e.tail = new ExpList(e2, null);
-      RESULT = e1;
-    }
-  :}
-| /* e-production */;
+    {:
+      ExpList e = e1;
+      if (e == null) {
+        RESULT = new ExpList(e2, null);
+      } else {
+        while (e.tail != null)
+          e = e.tail;
+        e.tail = new ExpList(e2, null);
+        RESULT = e1;
+      }
+    :}
+  | /* e-production */;
+
 
 statement ::= expression_stmt:e
-  {:
-    RESULT = e;
-  :}
-| compound_stmt:c
-  {:
-    RESULT = c;
-  :}
-| selection_stmt:s 
-  {:
-    RESULT = s;
-  :}
-| iteration_stmt:i
-  {:
-    RESULT = i;
-  :}
-| return_stmt:r
-  {:
-    RESULT = r;
-  :};
+    {:
+      RESULT = e;
+    :}
+  | compound_stmt:c
+    {:
+      RESULT = c;
+    :}
+  | selection_stmt:s 
+    {:
+      RESULT = s;
+    :}
+  | iteration_stmt:i
+    {:
+      RESULT = i;
+    :}
+  | return_stmt:r
+    {:
+      RESULT = r;
+    :};
+
 
 // TODO: nilexpr
 expression_stmt ::= expression:e SEMI 
-  {:
-    RESULT = e;
-  :}
-| SEMI:s
-  {:
-    // This is likely wrong?
-    RESULT = new NilExp(sleft, sright);
-  :};
+    {:
+      RESULT = e;
+    :}
+  | SEMI:s
+    {:
+      // This is likely wrong?
+      RESULT = new NilExp(sleft, sright);
+    :};
+
 
 // TODO: nilexpr
 selection_stmt ::= IF:i LPAREN expression:e RPAREN statement:s 
-  {:
-    RESULT = new IfExp(ileft, iright, e, s, new NilExp(ileft, iright));
-  :}
-| IF:i LPAREN expression:e RPAREN statement:s1 ELSE statement:s2
-  {:
-    RESULT = new IfExp(ileft, iright, e, s1, s2);
-  :};
+    {:
+      RESULT = new IfExp(ileft, iright, e, s, new NilExp(ileft, iright));
+    :}
+  | IF:i LPAREN expression:e RPAREN statement:s1 ELSE statement:s2
+    {:
+      RESULT = new IfExp(ileft, iright, e, s1, s2);
+    :};
+
 
 iteration_stmt ::= WHILE:w LPAREN expression:e RPAREN statement:s
-  {:
-    RESULT = new WhileExp(wleft, wright, e, s);
-  :};
+    {:
+      RESULT = new WhileExp(wleft, wright, e, s);
+    :};
+
 
 // TODO: nilexpr
 return_stmt ::= RETURN:r expression:e SEMI 
-  {:
-    RESULT = new ReturnExp(rleft, rright, e);
-  :}
-| RETURN:r SEMI
-  {:
-    RESULT = new ReturnExp(rleft, rright, new NilExp(rleft, rright));
-  :};
+    {:
+      RESULT = new ReturnExp(rleft, rright, e);
+    :}
+  | RETURN:r SEMI
+    {:
+      RESULT = new ReturnExp(rleft, rright, new NilExp(rleft, rright));
+    :};
+
 
 var ::= ID:i
-  {:
-    RESULT = new VarExp(ileft, iright, new SimpleVar(ileft, iright, i));
-  :} 
-| ID:i LSQUARE expression:e RSQUARE
-  {:
-    RESULT = new VarExp(ileft, iright, new IndexVar(ileft, iright, i, e));
-  :};
+    {:
+      RESULT = new VarExp(ileft, iright, new SimpleVar(ileft, iright, i));
+    :} 
+  | ID:i LSQUARE expression:e RSQUARE
+    {:
+      RESULT = new VarExp(ileft, iright, new IndexVar(ileft, iright, i, e));
+    :};
+
 
 expression ::= var:v ASSIGN expression:e 
-  {:
-    RESULT = new AssignExp(vleft, vright, v, e);
-  :}
-| expression:o OR expression:a 
-  {:
-    RESULT = new OpExp(oleft, oright, o, OpExp.OR, a);
-  :}
-| expression:a AND expression:u 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.AND, u);
-  :}
-| NOT:n expression:u
-  {:
-    RESULT = new OpExp(nleft, nright, new NilExp(nleft, nright), OpExp.NOT, u);
-  :} 
-| expression:a LTEQUAL expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.LE, e);
-  :}
-| expression:a LT expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.LT, e);
-  :}
-| expression:a GT expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.GT, e);
-  :}
-| expression:a GTEQUAL expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.GE, e);
-  :}
-| expression:a EQUAL expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.EQ, e);
-  :}
-| expression:a NOTEQUAL expression:e 
-  {:
-    RESULT = new OpExp(aleft, aright, a, OpExp.NE, e);
-  :}
-| expression:e PLUS expression:t 
-  {:
-    RESULT = new OpExp(eleft, eright, e, OpExp.PLUS, t);
-  :}
-| expression:e MINUS expression:t 
-  {:
-    RESULT = new OpExp(eleft, eright, e, OpExp.MINUS, t);
-  :}
-| expression:t TIMES expression:s 
-  {:
-    RESULT = new OpExp(tleft, tright, t, OpExp.MUL, s);
-  :}
-| expression:t OVER expression:s 
-  {:
-    RESULT = new OpExp(tleft, tright, t, OpExp.DIV, s);
-  :}
-| MINUS:m expression:s
-  {:
-    RESULT = new OpExp(mleft, mright, new NilExp(mleft, mright), OpExp.UMINUS, s);
-  :} 
-  %prec UMINUS
-| factor:f
-  {:
-    RESULT = f;
-  :};
+    {:
+      RESULT = new AssignExp(vleft, vright, v, e);
+    :}
+  | expression:o OR expression:a 
+    {:
+      RESULT = new OpExp(oleft, oright, o, OpExp.OR, a);
+    :}
+  | expression:a AND expression:u 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.AND, u);
+    :}
+  | NOT:n expression:u
+    {:
+      RESULT = new OpExp(nleft, nright, new NilExp(nleft, nright), OpExp.NOT, u);
+    :} 
+  | expression:a LTEQUAL expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.LE, e);
+    :}
+  | expression:a LT expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.LT, e);
+    :}
+  | expression:a GT expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.GT, e);
+    :}
+  | expression:a GTEQUAL expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.GE, e);
+    :}
+  | expression:a EQUAL expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.EQ, e);
+    :}
+  | expression:a NOTEQUAL expression:e 
+    {:
+      RESULT = new OpExp(aleft, aright, a, OpExp.NE, e);
+    :}
+  | expression:e PLUS expression:t 
+    {:
+      RESULT = new OpExp(eleft, eright, e, OpExp.PLUS, t);
+    :}
+  | expression:e MINUS expression:t 
+    {:
+      RESULT = new OpExp(eleft, eright, e, OpExp.MINUS, t);
+    :}
+  | expression:t TIMES expression:s 
+    {:
+      RESULT = new OpExp(tleft, tright, t, OpExp.MUL, s);
+    :}
+  | expression:t OVER expression:s 
+    {:
+      RESULT = new OpExp(tleft, tright, t, OpExp.DIV, s);
+    :}
+  | MINUS:m expression:s
+    {:
+      RESULT = new OpExp(mleft, mright, new NilExp(mleft, mright), OpExp.UMINUS, s);
+    :} 
+    %prec UMINUS
+  | factor:f
+    {:
+      RESULT = f;
+    :};
+
 
 factor ::= LPAREN:l expression:e RPAREN
-  {:
-    RESULT = e;
-  :} 
-| var:v
-  {:
-    RESULT = v;
-  :} 
-| call:c
-  {:
-    RESULT = c;
-  :} 
-| NUM:n
-  {:
-    RESULT = new IntExp(nleft, nright, Integer.parseInt(n));
-  :}
-| TRUTH:t
-  {:
-    RESULT = new BoolExp(tleft, tright, Boolean.parseBoolean(t));
-  :};
+    {:
+      RESULT = e;
+    :} 
+  | var:v
+    {:
+      RESULT = v;
+    :} 
+  | call:c
+    {:
+      RESULT = c;
+    :} 
+  | NUM:n
+    {:
+      RESULT = new IntExp(nleft, nright, Integer.parseInt(n));
+    :}
+  | TRUTH:t
+    {:
+      RESULT = new BoolExp(tleft, tright, Boolean.parseBoolean(t));
+    :};
 
 call ::= ID:i LPAREN args:a RPAREN
-  {:
-    RESULT = new CallExp(ileft, iright, i, a);
-  :};
+    {:
+      RESULT = new CallExp(ileft, iright, i, a);
+    :};
 
 args ::= arg_list:a
-  {:
-    RESULT = a;
-  :} 
-| /* e-production */;
+    {:
+      RESULT = a;
+    :} 
+  | /* e-production */;
 
 arg_list ::= arg_list:a COMMA expression:e1
-  {:
-    ExpList e = a;
-    while (e.tail != null)
-      e = e.tail;
-    e.tail = new ExpList(e1, null);
-    RESULT = a;
-  :} 
-| expression:e
-  {:
-    RESULT = new ExpList(e, null);
-  :};
+    {:
+      ExpList e = a;
+      while (e.tail != null)
+        e = e.tail;
+      e.tail = new ExpList(e1, null);
+      RESULT = a;
+    :} 
+  | expression:e
+    {:
+      RESULT = new ExpList(e, null);
+    :};
 
