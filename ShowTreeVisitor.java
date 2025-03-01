@@ -229,8 +229,8 @@ public class ShowTreeVisitor implements AbsynVisitor {
 
   @Override
   public void visit(NilExp exp, int level) {
-    indent( level );
-    System.out.println( "nil" );
+    // indent( level );
+    // System.out.println( "nil" );
   }
 
 }

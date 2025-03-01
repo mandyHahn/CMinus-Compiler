@@ -11,13 +11,17 @@ import absyn.*;
 /* Parser code to change the way the parser reports errors (include
   line and column number of the error). */
 parser code {:
-   
+  public void report_reason(String message) {
+    StringBuffer m = new StringBuffer("Reason");
+    m.append(": " + message + "\n");
+    System.err.println(m);
+  }
+
    /* Change the method report_error so it will display the line and
      column of where the error occurred in the input as well as the
      reason for the error which is passed into the method in the
      String 'message'. */
-   public void report_error(String message, Object info) {
-  
+   public void report_error(String message, Object info) {    
       /* Create a StringBuffer called 'm' with the string 'Error' in it. */
       StringBuffer m = new StringBuffer("Error");
   
@@ -42,11 +46,14 @@ parser code {:
                 the column number of the error in the input. */
               m.append(", column "+(s.right+1));
         }
+        
+        m.append(" ("+sym.terminalNames[s.sym]);
+        m.append((s.value != null ? ":" + s.value : "") + ")");
       }
   
       /* Add to the end of the StringBuffer error message created in
         this method the message that was passed into this method. */
-      m.append(" : "+message);
+      m.append(": "+message);
   
       /* Print the contents of the StringBuffer 'm', which contains
         an error message, out on a line. */
@@ -105,16 +112,30 @@ program ::= declaration_list:e
 
 declaration_list ::= declaration_list:d1 declaration:d2
     {:
-      DecList d = d1;
-      while (d.tail != null)
-        d = d.tail;
-      d.tail = new DecList(d2, null);
+      if (d2 != null) {
+        DecList d = d1;
+        while (d.tail != null)
+          d = d.tail;
+        d.tail = new DecList(d2, null);
+      }
       RESULT = d1;
     :} 
   | declaration:d
     {:
       RESULT = new DecList(d, null);
-    :};
+    :}
+  | error:e declaration:d
+    {:
+      parser.report_reason("Invalid declaration"); 
+      RESULT = new DecList(d, null);
+    :}  
+  | declaration_list:d error 
+    {:
+      parser.report_reason("Invalid declaration"); 
+      RESULT = d;
+    :}  
+  ;
+
 
 declaration ::= var_declaration:v
     {:
@@ -138,6 +159,12 @@ var_declaration ::= type_specifier:t ID:i SEMI
     {:
       RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
     :}
+  // | type_specifier:t error SEMI
+  //   {:
+  //     parser.report_reason("Declaration error");
+  //     RESULT = null;
+  //   :}
+    ;
 
 
 type_specifier ::= BOOL:b 
@@ -151,7 +178,13 @@ type_specifier ::= BOOL:b
   | VOID:v
     {:
       RESULT = new NameTy(vleft, vright, NameTy.VOID);
-    :};
+    :}
+  // | error:e
+  //   {:
+  //     parser.report_reason("Invalid type specifier");
+  //     RESULT = new NameTy(eleft, eright, NameTy.VOID);
+  //   :}
+    ;
 
 
 fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
@@ -174,21 +207,56 @@ params ::= param_list:p
   | VOID:v
     {:
       RESULT = null;
-    :};
+    :}
+  | /* e-production IS AN ERROR */
+    {:
+      // TODO: other error print info
+      parser.report_reason("Empty parameter list invalid (should be void?)");
+      RESULT = null;
+    :}
+  ;
+
 
 
 param_list ::= param_list:p1 COMMA param:p2 
     {:
-      VarDecList p = p1;
-      while (p.tail != null)
-        p = p.tail;
-      p.tail = new VarDecList(p2, null);
+      if (p2 != null) {
+        VarDecList p = p1;
+        while (p.tail != null)
+          p = p.tail;
+        p.tail = new VarDecList(p2, null);
+        RESULT = p1;
+      }
       RESULT = p1;
+
     :}
   | param:p
     {:
       RESULT = new VarDecList(p, null);
-    :};
+    :}
+  // | param_list:p1 COMMA error 
+  //   {:
+  //     parser.report_reason("Invalid parameter declaration1");
+  //     RESULT = p1;
+  //   :}
+  | error COMMA param:p2 
+    {:
+      parser.report_reason("Invalid parameter declaration2");
+      RESULT = new VarDecList(p2, null);
+    :}
+  | param_list:p1 param:p2 
+    {:
+      // TODO: print line number and other error info
+      parser.report_reason("Missing comma in parameter declarations");
+      if (p2 != null) {
+        VarDecList p = p1;
+        while (p.tail != null)
+          p = p.tail;
+        p.tail = new VarDecList(p2, null);
+      }
+      RESULT = p1;
+    :}
+  ;
 
 
 param ::= type_specifier:t ID:i 
@@ -219,6 +287,11 @@ local_declarations ::= local_declarations:p1 var_declaration:p2
         RESULT = p1;
       }
     :}
+  | local_declarations:p error 
+    {:
+      parser.report_reason("Local declaration invalid");
+      RESULT = p;
+    :}
   | /* e-production */;
 
 
@@ -233,6 +306,11 @@ statement_list ::= statement_list:e1 statement:e2
         e.tail = new ExpList(e2, null);
         RESULT = e1;
       }
+    :}
+  | statement_list:e error 
+    {:
+      parser.report_reason("Invalid statement");
+      RESULT = e;
     :}
   | /* e-production */;
 
@@ -380,6 +458,21 @@ factor ::= LPAREN:l expression:e RPAREN
     {:
       RESULT = e;
     :} 
+  | LPAREN:l error RPAREN
+    {:
+      parser.report_reason("Invalid factor");
+      RESULT = new NilExp(lleft, lright);
+    :}
+  // | LPAREN:l error 
+  //   {:
+  //     parser.report_reason("Missing )");
+  //     RESULT = new NilExp(lleft, lright);
+  //   :}
+  // | error:e RPAREN
+  //   {:
+  //     parser.report_reason("Missing (");
+  //     RESULT = new NilExp(eleft, eright);
+  //   :}
   | var:v
     {:
       RESULT = v;
@@ -419,5 +512,16 @@ arg_list ::= arg_list:a COMMA expression:e1
   | expression:e
     {:
       RESULT = new ExpList(e, null);
-    :};
+    :}
+  // | arg_list:a COMMA error
+  //   {:
+  //     parser.report_reason("Invalid argument");
+  //     RESULT = a;
+  //   :}
+  | error COMMA expression:e
+    {:
+      parser.report_reason("Invalid argument");
+      RESULT = new ExpList(e, null);
+    :}
+  ;
 
