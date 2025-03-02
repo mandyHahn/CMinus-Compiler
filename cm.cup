@@ -17,6 +17,20 @@ parser code {:
     System.err.println(m);
   }
 
+  public void manual_report_error(int line, int col, String token, String value) {
+    StringBuffer m = new StringBuffer("Error");
+    m.append(" in line "+(line+1));  
+    m.append(", column "+(col+1));
+    if (token != null) {
+      m.append(" ("+token);
+      m.append((value != null ? ":" + value : "") + ")");
+    }
+    m.append(": Syntax error");
+    System.err.println(m);
+
+
+  }
+
    /* Change the method report_error so it will display the line and
      column of where the error occurred in the input as well as the
      reason for the error which is passed into the method in the
@@ -161,7 +175,6 @@ var_declaration ::= type_specifier:t ID:i SEMI
     :}
   | type_specifier:t ID:i error:e
     {:
-      System.err.println(eleft+1 + " " + eright);
       report_reason("Variable declaration needs to end with a semicolon");
       RESULT = new SimpleDec(tleft, tright, t, i);
     :}
@@ -180,11 +193,6 @@ type_specifier ::= BOOL:b
     {:
       RESULT = new NameTy(vleft, vright, NameTy.VOID);
     :}
-  // | error:e
-  //   {:
-  //     parser.report_reason("Invalid type specifier");
-  //     RESULT = new NameTy(eleft, eright, NameTy.VOID);
-  //   :}
     ;
 
 
@@ -198,8 +206,14 @@ fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
 fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
     {:
       RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
+    :}
+  | type_specifier:t ID:i LPAREN RPAREN SEMI
+    {:
+      // TODO: other error print info
+      parser.manual_report_error(ileft, iright, "ID", i);
+      parser.report_reason("Empty parameter list invalid (should be void?)");
+      RESULT = null;
     :};
-
 
 params ::= param_list:p
     {:
@@ -208,14 +222,7 @@ params ::= param_list:p
   | VOID:v
     {:
       RESULT = null;
-    :}
-  | /* e-production IS AN ERROR */
-    {:
-      // TODO: other error print info
-      parser.report_reason("Empty parameter list invalid (should be void?)");
-      RESULT = null;
-    :}
-  ;
+    :};
 
 
 
@@ -235,19 +242,20 @@ param_list ::= param_list:p1 COMMA param:p2
     {:
       RESULT = new VarDecList(p, null);
     :}
-  // | param_list:p1 COMMA error 
-  //   {:
-  //     parser.report_reason("Invalid parameter declaration1");
-  //     RESULT = p1;
-  //   :}
+  | param_list:p1 COMMA error 
+    {:
+      parser.report_reason("Invalid parameter declaration");
+      RESULT = p1;
+    :}
   | error COMMA param:p2 
     {:
-      parser.report_reason("Invalid parameter declaration2");
+      parser.report_reason("Invalid parameter declaration");
       RESULT = new VarDecList(p2, null);
     :}
   | param_list:p1 param:p2 
     {:
       // TODO: print line number and other error info
+      parser.manual_report_error(p1left, p1right, null, null);
       parser.report_reason("Missing comma in parameter declarations");
       if (p2 != null) {
         VarDecList p = p1;
@@ -472,7 +480,7 @@ factor ::= LPAREN:l expression:e RPAREN
   | LPAREN:l expression:e
     {:
       //TODO: proper output
-      System.err.println((lleft+1) + " " + (lright+1));
+      parser.manual_report_error(lleft, lright, "LPAREN", null);
       parser.report_reason("Unmatched ( in expression");
       RESULT = new NilExp(lleft, lright);
     :}
@@ -499,7 +507,7 @@ call ::= ID:i LPAREN args:a RPAREN
     :}
   | ID:i LPAREN:l args:a
     {:
-      System.err.println((lleft+1) + " " + (lright+1));
+      parser.manual_report_error(lleft, lright, "LPAREN", null);
       parser.report_reason("Unmatched ( in call statement"); 
       RESULT = new CallExp(ileft, iright, i, null);
     :}
@@ -523,11 +531,11 @@ arg_list ::= arg_list:a COMMA expression:e1
     {:
       RESULT = new ExpList(e, null);
     :}
-  // | arg_list:a COMMA error
-  //   {:
-  //     parser.report_reason("Invalid argument");
-  //     RESULT = a;
-  //   :}
+  | arg_list:a COMMA error
+    {:
+      parser.report_reason("Invalid argument");
+      RESULT = a;
+    :}
   | error COMMA expression:e
     {:
       parser.report_reason("Invalid argument");
