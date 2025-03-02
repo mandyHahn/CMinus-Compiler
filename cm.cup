@@ -173,8 +173,9 @@ var_declaration ::= type_specifier:t ID:i SEMI
     {:
       RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
     :}
-  | type_specifier:t ID:i error:e
+  | type_specifier:t ID:i
     {:
+      manual_report_error(ileft, iright, "ID", i);
       report_reason("Variable declaration needs to end with a semicolon");
       RESULT = new SimpleDec(tleft, tright, t, i);
     :}
@@ -192,6 +193,12 @@ type_specifier ::= BOOL:b
   | VOID:v
     {:
       RESULT = new NameTy(vleft, vright, NameTy.VOID);
+    :}
+  | ID:i
+    {:
+      parser.manual_report_error(ileft, iright, "INVALID_TYPE", i);
+      parser.report_reason("Invalid type specifier");
+      RESULT = new NameTy(ileft, iright, NameTy.VOID);
     :}
     ;
 
@@ -521,6 +528,7 @@ factor ::= LPAREN:l expression:e RPAREN
       RESULT = new BoolExp(tleft, tright, Boolean.parseBoolean(t));
     :};
 
+
 call ::= ID:i LPAREN args:a RPAREN
     {:
       RESULT = new CallExp(ileft, iright, i, a);
@@ -538,6 +546,7 @@ args ::= arg_list:a
       RESULT = a;
     :} 
   | /* e-production */;
+
 
 arg_list ::= arg_list:a COMMA expression:e1
     {:
