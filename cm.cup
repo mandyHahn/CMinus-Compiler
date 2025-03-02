@@ -159,12 +159,13 @@ var_declaration ::= type_specifier:t ID:i SEMI
     {:
       RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
     :}
-  // | type_specifier:t error SEMI
-  //   {:
-  //     parser.report_reason("Declaration error");
-  //     RESULT = null;
-  //   :}
-    ;
+  | type_specifier:t ID:i error:e
+    {:
+      System.err.println(eleft+1 + " " + eright);
+      report_reason("Variable declaration needs to end with a semicolon");
+      RESULT = new SimpleDec(tleft, tright, t, i);
+    :}
+  ;
 
 
 type_specifier ::= BOOL:b 
@@ -463,16 +464,13 @@ factor ::= LPAREN:l expression:e RPAREN
       parser.report_reason("Invalid factor");
       RESULT = new NilExp(lleft, lright);
     :}
-  // | LPAREN:l error 
-  //   {:
-  //     parser.report_reason("Missing )");
-  //     RESULT = new NilExp(lleft, lright);
-  //   :}
-  // | error:e RPAREN
-  //   {:
-  //     parser.report_reason("Missing (");
-  //     RESULT = new NilExp(eleft, eright);
-  //   :}
+  | LPAREN:l expression:e
+    {:
+      //TODO: proper output
+      System.err.println((lleft+1) + " " + (lright+1));
+      parser.report_reason("Unmatched ( in expression");
+      RESULT = new NilExp(lleft, lright);
+    :}
   | var:v
     {:
       RESULT = v;
@@ -493,7 +491,14 @@ factor ::= LPAREN:l expression:e RPAREN
 call ::= ID:i LPAREN args:a RPAREN
     {:
       RESULT = new CallExp(ileft, iright, i, a);
-    :};
+    :}
+  | ID:i LPAREN:l args:a
+    {:
+      System.err.println((lleft+1) + " " + (lright+1));
+      parser.report_reason("Unmatched ( in call statement"); 
+      RESULT = new CallExp(ileft, iright, i, null);
+    :}
+  ;
 
 args ::= arg_list:a
     {:
