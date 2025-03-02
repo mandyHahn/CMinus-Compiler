@@ -358,6 +358,11 @@ selection_stmt ::= IF:i LPAREN expression:e RPAREN statement:s
   | IF:i LPAREN expression:e RPAREN statement:s1 ELSE statement:s2
     {:
       RESULT = new IfExp(ileft, iright, e, s1, s2);
+    :}
+  | IF:i LPAREN error:e RPAREN
+    {:
+      parser.report_reason("Invalid if statement expression -- ignoring if statement");
+      RESULT = new IfExp(ileft, iright, new BoolExp(eleft, eright, false), new NilExp(ileft, iright), new NilExp(ileft, iright));
     :};
 
 
