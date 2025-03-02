@@ -29,7 +29,6 @@ import java_cup.runtime.*;
 %};
 
 %eofval{
-    System.out.println("Reaching end of file!");
     return null;
 %eofval};
 

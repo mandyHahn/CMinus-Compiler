@@ -1,0 +1,33 @@
+/* A program that implements the standard "fizz buzz" program up to 30
+  digits, but uses "4177" for "fizz" and "8077" for buzz due to the lack of strings */
+
+void main(void) {
+  int iter;
+  int modulo5;
+  int modulo3;
+  int result;
+
+  iter = 1; /* Starting value of `iter` */
+
+  while (iter <= 30) {
+    /* Calculate our modulos */
+    modulo5 = iter - iter / 5 * 5;
+    modulo3 = iter - iter / 3 * 3;
+
+    /* See if both modulo 5 and 3 match */
+    if (modulo5 == 0 && modulo3 == 0) {
+      output = 41778077;
+    } else {
+      if (modulo5 == 0) {
+        output = 8077;
+      } else {
+        if (modulo3 == 0) {
+          output = 4177;
+        } else {
+          output = iter;
+        }
+      }
+    }
+    print(output);
+  }
+}

@@ -1,0 +1,17 @@
+int main(void) {
+  /* Bro what are you doing this should have a semicolon */
+  int a
+
+  int b;
+  int arr[69];
+
+  b = 1;
+
+  /* Are you trying to code in Javascript with this code??? */
+  if (b !== c) {
+    /* "Call" is not valid here, fella! */
+    call print(b);
+  }
+
+  return 1;
+}
