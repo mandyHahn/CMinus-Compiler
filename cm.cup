@@ -371,13 +371,33 @@ selection_stmt ::= IF:i LPAREN expression:e RPAREN statement:s
     {:
       parser.report_reason("Invalid if statement expression -- ignoring if statement");
       RESULT = new IfExp(ileft, iright, new BoolExp(eleft, eright, false), new NilExp(ileft, iright), new NilExp(ileft, iright));
-    :};
+    :}    
+  | IF:i LPAREN:l expression:e
+    {:
+      parser.manual_report_error(lleft, lright, "LPAREN", null);
+      parser.report_reason("Unmatched ( in if statement -- ignoring if statement");
+      RESULT = new IfExp(ileft, iright, e, new NilExp(ileft, iright), new NilExp(ileft, iright));
+    :}    
+  ;
 
 
 iteration_stmt ::= WHILE:w LPAREN expression:e RPAREN statement:s
     {:
       RESULT = new WhileExp(wleft, wright, e, s);
-    :};
+    :}
+  | WHILE:w LPAREN error:e RPAREN
+    {:
+      parser.report_reason("Invalid while statement expression -- ignoring while statement");
+      RESULT = new WhileExp(wleft, wright, new BoolExp(eleft, eright, false), new NilExp(wleft, wright));
+    :}    
+  | WHILE:w LPAREN:l expression:e
+    {:
+      parser.manual_report_error(lleft, lright, "LPAREN", null);
+      parser.report_reason("Unmatched ( in while statement -- ignoring while statement");
+      RESULT = new WhileExp(wleft, wright, e, new NilExp(wleft, wright));
+    :}   
+    
+    ;
 
 
 // TODO: nilexpr
