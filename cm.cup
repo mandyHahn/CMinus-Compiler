@@ -220,6 +220,13 @@ fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Empty parameter list invalid (should be void?)");
       RESULT = null;
+    :}
+  | type_specifier:t ID:i LPAREN params:p RPAREN 
+    {:
+      // TODO: other error print info
+      parser.manual_report_error(ileft, iright, "ID", i);
+      parser.report_reason("Function prototypes need to end with a semicolon");
+      RESULT = null;
     :};
 
 params ::= param_list:p
