@@ -1,17 +1,32 @@
-int main(void) {
-  /* Bro what are you doing this should have a semicolon */
-  int a
+bool randomBool(void);
+int randomIntWithMax(int val);
+/* Forgot semicolon. Will log that a semicolon is missing */
+void print(void)
 
-  int b;
-  int arr[69];
+int not_main(void) {
+  /* Invalid variable name, leading to "3" "littlepigs" as separate tokens in scanner
+    This leads to an error */
+  int 3littlepigs; 
+  int threeLittlePigs;
+  bool bigBadWolfPresent;
+  bool bigBadWolfHunted;
 
-  b = 1;
-
-  /* Are you trying to code in Javascript with this code??? */
-  if (b !== c) {
-    /* "Call" is not valid here, fella! */
-    call print(b);
+  threeLittlePigs = 3;
+  bigBadWolfHunted = false;
+  while (threeLittlePigs > 0 && bigBadWolfHunted == false) {
+    bigBadWolfPresent = randomBool();
+    /* Forgot the ')' here -> will lead to an error that's recovered from */
+    bigBadWolfHunted = randomIntWithMax(10;
+    if (bigBadWolfHunted <= 2) {
+      bigBadWolfHunted = true;
+    }
+    else {
+      if (bigBadWolfPresent) {
+        /* Indicate that one of the three little piggies got ate :( */
+        print(-1);
+        threeLittlePigs = threelittlePigs - 1;
+      }
+    }
   }
-
-  return 1;
+  print(threeLittlePigs);
 }

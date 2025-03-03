@@ -1,0 +1,72 @@
+bool x = 10
+int y[5];
+c;
+
+/* Will appear in the AST, but not nicely and with errors */
+/* Need types in function header */
+int foo(x, y) { 
+    /* Invalid == */
+    bool a == true;
+    if x < 10
+        return 1 
+    else {
+      return 0;
+    }
+}
+
+/* None of this will appear in the AST as a function because it's not recognized as a function */
+bar(void) {
+    int 5var;
+    y[2]  = 3; 
+}
+
+int main(void) {
+    while x > 0 { 
+        x = x - 1 
+    }
+    if (y == 2)
+
+    return 1;
+}
+
+int missingCloseBracet(int a, int b) {
+    /* Unmapped ) in expression error */
+    return (a + b;
+}
+
+/* Forgot int for the one parameter here */
+void brokenFunction(int a, b) {
+    if (a > 0) { 
+        x = x * ;
+    }
+    return  
+}
+
+/* No void statement here */
+int no_void() { 
+    int x = 5
+    bool flag = true;
+    return x;
+}
+
+/* Not a valid comparison */
+bool invalidComparison(void) {
+    return 10 = 5;
+}
+
+/* No RHS on operator */
+int missingOperator(void) {
+    return 10 + ;
+}
+
+/* We're not calling this function good */
+int incorrectCall(void) {
+    return foo(1, 2,);
+}
+
+void inconsistentBraces(int x, int y) {
+    if (x > y) {
+      while (y < x) 
+        x = x - y;
+    return;
+}

@@ -1,33 +1,51 @@
-/* A program that implements the standard "fizz buzz" program up to 30
-  digits, but uses "4177" for "fizz" and "8077" for buzz due to the lack of strings */
+/* This is a program with a smorgishborg of random functions that are used to check 
+  the validity of the parser being used. It's behaviour is well-defined but entirely arbitrary
+  and meant to show off the grammar given in the C- specification without throwing any errors */
 
-void main(void) {
-  int iter;
-  int modulo5;
-  int modulo3;
-  int result;
+bool isEven(int num);
+int factorial(int num);
+void printResult(int num, bool isEven);
 
-  iter = 1; /* Starting value of `iter` */
+int main(void) {
+  int x;
+  int arr[5];
+  x = 10;
+  arr[0] = factorial(x);
+  
+  /* Does separate logic if the first element of the accessed array is greater than 100 */
+  if (arr[0] > 100) {
+    printResult(arr[0], isEven(arr[0]));
+  } else {
+    printResult(x, isEven(x));
+  }
+  
+  while (x > 0) {
+    x = x - 1;
+  }
+  
+  return 0;
+}
 
-  while (iter <= 30) {
-    /* Calculate our modulos */
-    modulo5 = iter - iter / 5 * 5;
-    modulo3 = iter - iter / 3 * 3;
+bool isEven(int num) {
+  /* This assumes non floating-point division */
+  return (num / 2) * 2 == num;
+}
 
-    /* See if both modulo 5 and 3 match */
-    if (modulo5 == 0 && modulo3 == 0) {
-      output = 41778077;
-    } else {
-      if (modulo5 == 0) {
-        output = 8077;
-      } else {
-        if (modulo3 == 0) {
-          output = 4177;
-        } else {
-          output = iter;
-        }
-      }
-    }
-    print(output);
+/* Calculates the factorial of a number using recursion */
+int factorial(int num) {
+  if (num <= 1) {
+    return 1;
+  }
+  return num * factorial(num - 1);
+}
+
+/* Prints the result, but adds 1 to the number if it's odd to make it even */
+void printResult(int num, bool isEven) {
+  if (isEven) {
+    print(num);
+    return;
+  } else {
+    print(num + 1);
+    return;
   }
 }
