@@ -4,3 +4,17 @@ Nicholas Waller (nwaller@uoguelph.ca)
 Amanda Hahn (ahahn01@uoguelph.ca)
 
 Note: Scanner and Parser based on given SampleParser implementation
+
+# Building and Running/Testing
+Running the program is simple. 
+
+All tests are in the directory "tests", including the mandatory `1.cm`, `2.cm`, ... required for the assignment. 
+
+While on the linux.socs.uoguelph.ca servers, type `make` into the console. 
+To run the scanner for 1.cm:
+- Run `java -cp /usr/share/java/cup.jar:. Scanner < tests/1.cm`
+To run the parser for 1.cm:
+- Run `java -cp /usr/share/java/cup.jar:. CM tests/1.cm`
+
+By default, the AST will be printed to the terminal stdout. By adding the `-a` flag onto the command to run the parser, you can make a .abs file. 
+For example, `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
