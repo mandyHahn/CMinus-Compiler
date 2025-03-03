@@ -206,7 +206,13 @@ type_specifier ::= BOOL:b
 fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
     {:
       RESULT = new FunctionDec(tleft, tright, t, i, p, s);
-    :};
+    :}
+  | type_specifier:t ID:i LPAREN error RPAREN compound_stmt:s
+      {:
+      parser.report_reason("Invalid function parameters");
+      RESULT = new FunctionDec(tleft, tright, t, i, null, s);;
+    :}
+  ;
 
 
 // TODO: nilexpr
@@ -227,7 +233,13 @@ fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Function prototypes need to end with a semicolon");
       RESULT = null;
-    :};
+    :}
+  | type_specifier:t ID:i LPAREN error RPAREN SEMI
+    {:
+      parser.report_reason("Invalid function parameters");
+      RESULT = new FunctionDec(tleft, tright, t, i, null, new NilExp(tleft, tright));
+    :}
+  ;
 
 params ::= param_list:p
     {:
