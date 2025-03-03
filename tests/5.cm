@@ -63,10 +63,3 @@ int missingOperator(void) {
 int incorrectCall(void) {
     return foo(1, 2,);
 }
-
-void inconsistentBraces(int x, int y) {
-    if (x > y) {
-      while (y < x) 
-        x = x - y;
-    return;
-}
