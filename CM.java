@@ -33,12 +33,13 @@ class CM {
   static public void main(String argv[]) {    
     int numArgs = argv.length;
 
-    // // TODO: UNCOMMENT FOR C2
-    // if (numArgs < 2) {
-    //   usage();
-    //   return;
-    // } else
-    if (numArgs > 2) {
+    // TODO: CHANGE TO < 2 FOR C2
+    if (numArgs < 1) {
+      System.out.println("The file to compile must be included as the last parameter");
+      usage();
+      return;
+    } 
+    else if (numArgs > 2) {
       System.out.println("Only one command line option may be used");
       usage();
       return;
@@ -57,7 +58,11 @@ class CM {
         return;
       }
     }
-      
+    
+    if (!new File(argv[numArgs-1]).isFile()) {
+      System.out.println("File " + argv[numArgs-1] + " does not exist");
+      return;
+    }
     String fileNameBase = argv[numArgs-1].substring(0, argv[numArgs-1].length()-3);
     PrintStream originalOut = System.out;
 
@@ -66,6 +71,7 @@ class CM {
       parser p = new parser(new Lexer(new FileReader(argv[numArgs-1])));
       Absyn result = (Absyn)(p.parse().value);     
 
+      // TODO: SET SHOW_TREE TO FALSE FOR C2
       if (SHOW_TREE && result != null) {
         System.out.println("The abstract syntax tree is:");
         AbsynVisitor visitor = new ShowTreeVisitor();
