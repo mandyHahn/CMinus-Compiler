@@ -173,9 +173,9 @@ var_declaration ::= type_specifier:t ID:i SEMI
     {:
       RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
     :}
-  | type_specifier:t ID:i
+  | type_specifier:t ID:i error 
     {:
-      manual_report_error(ileft, iright, "ID", i);
+      // manual_report_error(ileft, iright, "ID", i);
       report_reason("Variable declaration needs to end with a semicolon");
       RESULT = new SimpleDec(tleft, tright, t, i);
     :}
