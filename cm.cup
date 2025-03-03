@@ -95,7 +95,7 @@ terminal PLUS, MINUS, TIMES, OVER, LTEQUAL, LT, GTEQUAL, GT, EQUAL, NOTEQUAL, NO
 
 terminal String ID, NUM, TRUTH;
 
-terminal ERROR, LOW, HIGH;
+terminal ERROR;
 
 non terminal DecList program, declaration_list;
 non terminal Dec declaration, fun_declaration, fun_prototype;
@@ -106,9 +106,6 @@ non terminal NameTy type_specifier;
 non terminal VarDecList params, param_list, local_declarations;
 non terminal VarDec param, var_declaration;
 non terminal VarExp var;
-
-precedence left LOW;
-precedence left HIGH;
 
 precedence right ASSIGN;
 precedence left OR;
@@ -197,12 +194,12 @@ type_specifier ::= BOOL:b
     {:
       RESULT = new NameTy(vleft, vright, NameTy.VOID);
     :}
-  | ID:i
+  | error:i 
     {:
-      parser.manual_report_error(ileft, iright, "INVALID_TYPE", i);
+      // parser.manual_report_error(ileft, iright, "INVALID_TYPE", i);
       parser.report_reason("Invalid type specifier");
-      RESULT = new NameTy(ileft, iright, NameTy.VOID);
-    :} %prec LOW
+      RESULT = new NameTy(ileft, iright, NameTy.INT);
+    :}
     ;
 
 
@@ -356,7 +353,7 @@ statement_list ::= statement_list:e1 statement:e2
       parser.report_reason("Invalid statement");
       RESULT = e;
     :}
-  | %prec HIGH /* e-production */;
+  | /* e-production */;
 
 
 statement ::= expression_stmt:e
