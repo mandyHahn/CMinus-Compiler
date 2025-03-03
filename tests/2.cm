@@ -1,4 +1,8 @@
-/* Expected errors: line 5, line 10, line 19 */
+/* Expected errors: 
+  line 9 -> Reason: Missing semicolon "function prototypes need to end with a semicolon"
+  line 14 -> Reason: Bad variable name, leading to bad "number" token coming from scanner, "invalid type specifier"
+  line 24 -> Reason: "Unmatched ( in call statement"
+*/
 bool randomBool(void);
 int randomIntWithMax(int val);
 /* Forgot semicolon. Will log that a semicolon is missing */

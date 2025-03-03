@@ -1,4 +1,8 @@
-/* Errors on line 3 and line 7 */
+/* Expected errors: 
+  line 8 -> Bad comma after param list "invalid parameter declaration" 
+  line 12 -> Can't put a function inside a function "variable declaration needs to end with a semicolon
+    -> This happens since int is a valid variable name, but the rest isn't a valid variable
+*/
 
 /* Invalid trailing comma in header */
 int func_header(int a,);

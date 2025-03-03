@@ -1,4 +1,8 @@
-/* Expected errors on line 5, line 9, and line 11 */
+/* Expected errors: 
+  line 9 -> can't name a variable bool "invalid declaration"
+  line 13 -> "invalidtype" is not a valid type "invalid type specifier"
+  line 15 -> "true" isn't a valid variable name "invalid declaration" 
+*/
 int a;
 int b;
 /* can't do this */
