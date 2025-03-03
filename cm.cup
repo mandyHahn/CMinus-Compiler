@@ -1,9 +1,11 @@
 /*
-  Created by: Fei Song
-  File Name: tiny.cup
+  File Name: cm.cup
+
+  This file was repurposed from the SampleScanner given to start Checkpoint One
+  Contains the grammar rules and error handling for the C Minus language
+
 */
-/* ----------------------------------- ^^^^^ Do we get rid of this?????? --------------------- */
-  
+   
 /* ----------------------Preliminary Declarations Section--------------------*/
   
 import absyn.*;

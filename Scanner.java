@@ -1,3 +1,10 @@
+/*
+  File Name: CM.java
+
+  This file was repurposed from the SampleScanner given to start Checkpoint One
+  Contains the logic to run the scanner generated from jflex and cm.flex
+*/
+
 import java.io.InputStreamReader;
 import java_cup.runtime.Symbol;
 

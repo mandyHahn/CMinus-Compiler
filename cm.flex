@@ -1,3 +1,10 @@
+/*
+  File Name: cm.flex
+
+  This file was repurposed from the SampleScanner given to start Checkpoint One
+  Contains the scanner definition for the C Minus language
+*/
+   
 import java_cup.runtime.*;
 
 
