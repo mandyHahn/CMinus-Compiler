@@ -1,0 +1,15 @@
+/* Expected errors on line 5, line 9, and line 11 */
+int a;
+int b;
+/* can't do this */
+bool bool;
+
+int c;
+
+invalidtype d;
+
+bool true;
+
+int main(void) {
+  return 0;
+}

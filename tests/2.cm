@@ -1,3 +1,4 @@
+/* Expected errors: line 5, line 10, line 19 */
 bool randomBool(void);
 int randomIntWithMax(int val);
 /* Forgot semicolon. Will log that a semicolon is missing */

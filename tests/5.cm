@@ -1,3 +1,24 @@
+/* A bunch of errors:
+    1. (22) bool x = 10 -> No semicolon
+    2. (24) c; on its own line -> no type
+    3. (28) int foo(x, y) -> no types
+    4. (32)a == true -> Not a valid statement
+    5. (33) if x < 10 -> brackets needed
+        5-1: Leads to an error on the next line for an invalid statement
+    6. (40) bar(void) -> no type for function
+    7. (41) int 5var -> invalid variable name (hanging "5" param)
+    8. (46) while x > 0 -> missing brackets
+        8-1: Leads to error on line 48 for a mismatched close curly
+    9. (56) return (a + b -> missing close bracket
+    10. (60) void brokenFunction(int a, b) -> no type on "b", but there is a type on "a"
+    11. (62) x = x * ; -> missing RHS of statement 
+    12. (68) int no_void() -> no "void" inside function for no args
+    13. (69) int x = 5 -> can't assign on the same line as a declaration
+    14. (75) return 10 = 5; -> Can't return something that's not boolean (invalid ASSIGN token)
+    15. (80) return 10 + ; -> Nothing on RHS (similar to 11)
+    16. (85) return foo(1, 2,); -> Invalid comma (unexpected RPAREN)
+*/
+
 bool x = 10
 int y[5];
 c;
@@ -6,7 +27,8 @@ c;
 /* Need types in function header */
 int foo(x, y) { 
     /* Invalid == */
-    bool a == true;
+    bool a;
+    a == true;
     if x < 10
         return 1 
     else {
@@ -39,13 +61,12 @@ void brokenFunction(int a, b) {
     if (a > 0) { 
         x = x * ;
     }
-    return  
+    return;
 }
 
 /* No void statement here */
 int no_void() { 
     int x = 5
-    bool flag = true;
     return x;
 }
 
