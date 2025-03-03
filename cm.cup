@@ -212,6 +212,12 @@ fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
       parser.report_reason("Invalid function parameters");
       RESULT = new FunctionDec(tleft, tright, t, i, null, s);;
     :}
+  | type_specifier:t ID:i LPAREN RPAREN compound_stmt:s
+      {:
+      parser.manual_report_error(ileft, iright, "ID", i);
+      parser.report_reason("Empty parameter list invalid (should be void?)");
+      RESULT = new FunctionDec(tleft, tright, t, i, null, s);;
+    :}
   ;
 
 
@@ -225,14 +231,14 @@ fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
       // TODO: other error print info
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Empty parameter list invalid (should be void?)");
-      RESULT = null;
+      RESULT = new FunctionDec(tleft, tright, t, i, null, new NilExp(tleft, tright));
     :}
   | type_specifier:t ID:i LPAREN params:p RPAREN 
     {:
       // TODO: other error print info
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Function prototypes need to end with a semicolon");
-      RESULT = null;
+      RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
     :}
   | type_specifier:t ID:i LPAREN error RPAREN SEMI
     {:
