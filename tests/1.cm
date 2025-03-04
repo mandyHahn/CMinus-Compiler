@@ -13,11 +13,10 @@ int main(void) {
   arr[0] = factorial(x);
   
   /* Does separate logic if the first element of the accessed array is greater than 100 */
-  if (arr[0] > 100) {
+  if (arr[0] > 100) 
     printResult(arr[0], isEven(arr[0]));
-  } else {
+  else
     printResult(x, isEven(x));
-  }
   
   while (x > 0) {
     x = x - 1;
@@ -42,10 +41,10 @@ int factorial(int num) {
 /* Prints the result, but adds 1 to the number if it's odd to make it even */
 void printResult(int num, bool isEven) {
   if (isEven) {
-    print(num);
+    output(num);
     return;
   } else {
-    print(num + 1);
+    output(num + 1);
     return;
   }
 }

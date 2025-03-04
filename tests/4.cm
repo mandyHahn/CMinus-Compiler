@@ -1,7 +1,8 @@
 /* Expected errors: 
   line 8 -> Bad comma after param list "invalid parameter declaration" 
   line 12 -> Can't put a function inside a function "variable declaration needs to end with a semicolon
-    -> This happens since int is a valid variable name, but the rest isn't a valid variable
+    -> This happens since int is a valid variable type, but when declaring a variable it is expected to end with ; instead of (
+  line 20 -> Increment operator is not supported, "Invalid statement"
 */
 
 /* Invalid trailing comma in header */
@@ -14,4 +15,7 @@ int main(int one_param, bool two_param) {
     a = 14;
     return a;
   }
+
+  /* invalid statement, ++ increment is not supported */
+  a++;
 }

@@ -120,7 +120,7 @@ public class ShowTreeVisitor implements AbsynVisitor {
   @Override
   public void visit(ArrayDec exp, int level) {
     indent( level );
-    System.out.print( "ArrayDec: " + exp.name + " " + exp.size + " ");
+    System.out.print( "ArrayDec: " + exp.name + "[" + exp.size + "] ");
     // level++;
     exp.typ.accept( this, level ); // prints on same line then adds newline
   }

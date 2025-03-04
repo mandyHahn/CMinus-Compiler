@@ -1,43 +1,38 @@
-/* A bunch of errors:
-    1. (22) bool x = 10 -> No semicolon
-    2. (24) c; on its own line -> no type
-    3. (28) int foo(x, y) -> no types
-    4. (32)a == true -> Not a valid statement
-    5. (33) if x < 10 -> brackets needed
-        5-1: Leads to an error on the next line for an invalid statement
-    6. (40) bar(void) -> no type for function
-    7. (41) int 5var -> invalid variable name (hanging "5" param)
-    8. (46) while x > 0 -> missing brackets
-        8-1: Leads to error on line 48 for a mismatched close curly
-    9. (56) return (a + b -> missing close bracket
-    10. (60) void brokenFunction(int a, b) -> no type on "b", but there is a type on "a"
-    11. (62) x = x * ; -> missing RHS of statement 
-    12. (68) int no_void() -> no "void" inside function for no args
-    13. (69) int x = 5 -> can't assign on the same line as a declaration
-    14. (75) return 10 = 5; -> Can't return something that's not boolean (invalid ASSIGN token)
-    15. (80) return 10 + ; -> Nothing on RHS (similar to 11)
-    16. (85) return foo(1, 2,); -> Invalid comma (unexpected RPAREN)
+/* 
+  A bunch of errors:
+    1. (line 26) bool x = 10 -> No semicolon (expects bool x; not =)
+    2. (line 28) c; on its own line -> Invalid type (expects declaration to start with type, not ID(c))
+    3. (line 32) bar(void) -> Invalid type (expects declaration to start with type, not ID(bar))
+    4. (line 36) int 5var -> Invalid type (not the best error message but catches errors relating to the tokens before a variable ID, in this case "5")
+    5. (line 41) while x > 0 -> Invalid statement (missing brackets)
+        5-1: Leads to another error on the same line, as well as one on line 42, since { and } are not a valid characters for statements
+    6. (line 51) return (a + b -> Unmatched (
+    7. (line 55) void brokenFunction(int a, b) -> Invalid type -- no type on "b", but there is a type on "a"
+    8. (line 57) x = x * ; -> Invalid statement (missing RHS of statement) 
+    9. (line 64) int x = 5 -> Missing semicolon -- can't assign on the same line as a declaration (expects ; instead of =)
+    10. (line 63) int no_void() -> Empty parameter list -- no "void" inside function for no args
+    11. (line 70) return 10 = 5; -> Invalid statement -- Can't assign a number to a number
+    12. (line 75) return + 10 ; -> Invalid statement -- Nothing on LHS (similar to 11)
+    13. (line 80) return foo(1, 2,); -> Invalid argument (dangling comma, expects another argument instead of RPAREN)
+    14. (line 85) while ((3 + 7 > x) -> Unmatched ( 
+    15. (line 92) if (x < (y + 2) -> Unmatched ( 
+    16. (line 98) int badParams(int as@ed) -> Invalid type (not the best error message but catches errors relating to the tokens before a variable ID, in this case "@") 
+    17. (line 103) int moreBadParams(int 3 + 4) -> Invalid function parameters (can only have IDs as parameter names) 
+    18. (line 109) int foo(x) -> Invalid type (expects declaration to start with type, not ID(x))
+    19. (line 114) if x < 10 -> Invalid statement (a bracket needs to follow "if", x follows instead, thus invalid)
+    20. (line 115) x < 10 return 1 -> Invalid statement (without a seperator ) or ;, treated as one statement on two lines. "return" is not a valid operator)    
 */
 
 bool x = 10
 int y[5];
 c;
+int d;
 
-/* Will appear in the AST, but not nicely and with errors */
-/* Need types in function header */
-int foo(x, y) { 
-    /* Invalid == */
-    bool a;
-    a == true;
-    if x < 10
-        return 1 
-    else {
-      return 0;
-    }
-}
+/* missing type specifier */
+bar(void);
 
-/* None of this will appear in the AST as a function because it's not recognized as a function */
-bar(void) {
+/* short valid function to help sync up the compiler */
+int test(void) {
     int 5var;
     y[2]  = 3; 
 }
@@ -70,17 +65,55 @@ int no_void() {
     return x;
 }
 
-/* Not a valid comparison */
-bool invalidComparison(void) {
+/* Not a valid assignment */
+bool invalidAssignment(void) {
     return 10 = 5;
 }
 
-/* No RHS on operator */
+/* No LHS on operator */
 int missingOperator(void) {
-    return 10 + ;
+    return + 10;
 }
 
 /* We're not calling this function good */
 int incorrectCall(void) {
     return foo(1, 2,);
+}
+
+/* While statement is missing a bracket */
+int missingBracketsWhile(void) {
+    while ((3 + 7 > x) {
+        doStuff();
+    }
+}
+
+/* If statement is missing a bracket */
+int missingBracketsIf(void) {
+    if (x < (y + 2) {
+        doStuff();
+    }
+}
+
+/* Invalid character in a parameter */
+int badParams(int as@ed) {
+    return 0;
+}
+
+/* Can't have non ID's in function parameters */
+int moreBadParams(int 3 + 4) {
+    return 0;
+}
+
+/* Will appear in the AST, but not nicely and with errors */
+/* Need types in function header */
+int foo(x) { 
+    /* Invalid == */
+    bool a;
+    bool b;
+    a == true;
+    if x < 10
+        return 1 
+    else {
+      return 0;
+    }
 }

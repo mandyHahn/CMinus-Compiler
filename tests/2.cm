@@ -28,10 +28,10 @@ int not_main(void) {
     else {
       if (bigBadWolfPresent) {
         /* Indicate that one of the three little piggies got ate :( */
-        print(-1);
+        output(-1);
         threeLittlePigs = threelittlePigs - 1;
       }
     }
   }
-  print(threeLittlePigs);
+  output(threeLittlePigs);
 }
