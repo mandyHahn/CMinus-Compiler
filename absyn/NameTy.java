@@ -16,4 +16,17 @@ public class NameTy extends Absyn {
   public void accept( AbsynVisitor visitor, int level ) {
     visitor.visit( this, level );
   }
+
+  public String name() {
+    switch( typ ) {
+      case BOOL:
+        return "bool";
+      case INT:
+        return "int";
+      case VOID:
+        return "void";
+      default:
+        return "Unrecognized type at line " + row + " and column " + col;
+    }
+  }
 }

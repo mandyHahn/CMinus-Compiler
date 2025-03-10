@@ -16,4 +16,8 @@ public class ArrayDec extends VarDec {
   public void accept( AbsynVisitor visitor, int level ) {
     visitor.visit( this, level );
   }
+
+  public String type() {
+    return typ.name() + "[]";
+  }
 }

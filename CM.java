@@ -18,7 +18,6 @@ import java.io.*;
 import absyn.*;
    
 class CM {
-  public final static boolean SHOW_TREE = true;
   public static boolean OUTPUT_ABS = false;
   public static boolean OUTPUT_SYM = false;
   public static boolean OUTPUT_TM = false;
@@ -33,8 +32,7 @@ class CM {
   static public void main(String argv[]) {    
     int numArgs = argv.length;
 
-    // TODO: CHANGE TO < 2 FOR C2
-    if (numArgs < 1) {
+    if (numArgs < 2) {
       System.out.println("The file to compile must be included as the last parameter");
       usage();
       return;
@@ -72,11 +70,11 @@ class CM {
       Absyn result = (Absyn)(p.parse().value);     
 
       // TODO: SET SHOW_TREE TO FALSE FOR C2
-      if (SHOW_TREE && result != null) {
-        System.out.println("The abstract syntax tree is:");
-        AbsynVisitor visitor = new ShowTreeVisitor();
-        result.accept(visitor, 0); 
-      }
+      // if (SHOW_TREE && result != null) {
+      //   System.out.println("The abstract syntax tree is:");
+      //   AbsynVisitor visitor = new ShowTreeVisitor();
+      //   result.accept(visitor, 0); 
+      // }
         
       if (OUTPUT_ABS && result != null) {
         System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".abs"), true));
@@ -85,9 +83,11 @@ class CM {
         System.setOut(originalOut);
       }
 
-      // TODO: implement for C2
-      if (OUTPUT_SYM) {
-        System.out.println("-s not yet implemented");
+      if (OUTPUT_SYM && result != null) {
+        System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".abs"), true));
+        AbsynVisitor visitor = new SemanticAnalyzer();
+        result.accept(visitor, 0); 
+        System.setOut(originalOut);
       }
       
       // TODO: implement for C3

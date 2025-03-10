@@ -270,7 +270,6 @@ param_list ::= param_list:p1 COMMA param:p2
         RESULT = p1;
       }
       RESULT = p1;
-
     :}
   | param:p
     {:
