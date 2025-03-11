@@ -24,8 +24,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
   // Which will mean they never get printed but are accessible to all functions
   SemanticAnalyzer() {
     symbolTable = new HashMap<String, ArrayList<NodeType>>();
-    FunctionDec input = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.VOID), "input", new VarDecList(null, null), null);
-    FunctionDec output = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.VOID), "output", new VarDecList(null, null), null);
+    FunctionDec input = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.INT), "input", new VarDecList(null, null), null);
+    FunctionDec output = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.VOID), "output", new VarDecList(new SimpleDec(0, 0, new NameTy(0, 0, NameTy.INT), "input"), null), null);
     prependToSymbolTable("input", input, 0);
     prependToSymbolTable("output", output, 0);
   }
@@ -92,7 +92,87 @@ public class SemanticAnalyzer implements AbsynVisitor {
     }
   }
 
-  
+  private int getParamListLength(VarDecList list) {
+    int length = 0;
+    while (list != null) {
+      length++;
+      list = list.tail;
+    }
+    return length;
+  }
+
+  // Can be made public later if needed elsewhere
+  private void reportError(Absyn node, String reason, String message) { 
+    if (node.row >= 0 && node.col >= 0) {
+      String errorHeader = "Error in " + (node.row + 1) + ", column " + (node.col + 1) + ": " + reason + "\n"; 
+      System.err.println(errorHeader + message);
+    } else {
+      System.err.println("Error: " + reason + "\n" + message);
+    }
+  }
+
+  // Tries to add a function to the symbol table. If it's able to do so successfully, returns true.
+  private boolean addFunctionToSymbolTable(FunctionDec function, int level) {
+    ArrayList<NodeType> existing = symbolTable.get(function.func);
+    if (existing == null) {
+      prependToSymbolTable(function.func, function, level);
+      return true;
+    }
+
+    for (int i = 0; i < existing.size(); i++) {
+      NodeType node = existing.get(i);
+      // Verify they have the same name to avoid potential hm conflicts
+      if (node.def instanceof FunctionDec && ((FunctionDec) node.def).func.equals(function.func)) {
+        FunctionDec existingFunction = (FunctionDec) node.def;
+
+        VarDecList existingParams = existingFunction.params;
+        VarDecList newParams = function.params;
+        int paramNum = 1;
+
+        // Verify the types of the parameters match
+        while (existingParams != null && newParams != null) {
+          if (!existingParams.head.type().equals(newParams.head.type())) {
+            reportError(function, "Conflicting parameter types", "Function \"" + function.func + "\" parameter " + paramNum + 
+              " has a conflicting type with existing function with the same name.\n" +
+              "  Existing type for param " + paramNum + ": " + existingParams.head.type() + "\n" +
+              "  New type for param " + paramNum + ": " + newParams.head.type());
+            return false;
+          }
+          paramNum++;
+          existingParams = existingParams.tail;
+          newParams = newParams.tail;
+        }
+        // We've iterated through one list but the other still isn't empty; conflicting lengths
+        if (existingParams != null || newParams != null) {
+          reportError(function, "Conflicting parameter count", "Function \"" + function.func + 
+            "\" has a conflicting number of parameters with existing function with the same name.\n" +
+            "  Existing number of parameters: " + getParamListLength(existingFunction.params) + "\n" +
+            "  New number of parameters: " + getParamListLength(function.params));
+          return false;
+        }
+
+        // Verify the return types match
+        if (!existingFunction.result.name().equals(function.result.name())) {
+          reportError(function, "Conflicting function return types", "Function \"" + function.func + 
+            "\" has a conflicting return type with existing function with the same name.\n" +
+            "  Existing return type: " + existingFunction.result.name() + "\n" +
+            "  New return type: " + function.result.name());
+          return false;
+        }
+
+        // So far, valid. But need to check that both don't have have a body. 
+        if (!(existingFunction.body instanceof NilExp) && !(function.body instanceof NilExp)) {
+          reportError(function, "Function already defined", "Function \"" + function.func + 
+            "\" already has a definition in the scope and can not be redefined.");
+          return false;
+        }
+      }
+    }
+
+    // Made it through every node without returning; either it's a prototype, the first instance of the body, or a new function
+    prependToSymbolTable(function.func, function, level);
+    return true;
+  }
 
   /* 
     --------------------------------
@@ -187,15 +267,17 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
   @Override
   public void visit(FunctionDec exp, int level) {
-    printAtLevel("Entering the scope for function " + exp.func, level);
-    prependToSymbolTable(exp.func, exp, level);
-    exp.result.accept(this, level + 1);
-    if (exp.params != null) {
-      exp.params.accept(this, level + 1);
+    boolean success = addFunctionToSymbolTable(exp, level);
+    if (success) {
+      printAtLevel("Entering the scope for function " + exp.func, level);
+      exp.result.accept(this, level + 1);
+      if (exp.params != null) {
+        exp.params.accept(this, level + 1);
+      }
+      exp.body.accept(this, level + 1);
+      deleteSymbolTableLevelAndPrint(level + 1);
+      printAtLevel("Leaving the function scope", level);
     }
-    exp.body.accept(this, level + 1);
-    deleteSymbolTableLevelAndPrint(level + 1);
-    printAtLevel("Leaving the function scope", level);
   }
 
   @Override

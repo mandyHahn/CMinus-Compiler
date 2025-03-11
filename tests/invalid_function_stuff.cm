@@ -1,0 +1,42 @@
+/* Error from redeclaring body */
+int x(void) {
+  int a;
+}
+int x(void) {
+  int b;
+}
+
+/* Valid statement */
+int q(void) {
+  /* Should be valid and not conflict at all with the function of the same name */
+  int x;
+}
+
+/* Error from differing types */
+int y(void);
+bool y(void) {
+  int a;
+}
+
+/* No error for z() since one is a prototype, one is a body */
+int z(void);
+int z(void);
+int z(void) {
+  int a;
+}
+
+/* Error for conflicting number of parameters in body */
+int a(int b);
+int a(int b, int c) {
+  int d;
+}
+
+/* Error for differing types of parameters */
+int b(int a);
+int b(bool a);
+
+/* Error for differing types of parameters, with one prototype and one body */
+int c(int a);
+int c(bool a) {
+  int b;
+}
