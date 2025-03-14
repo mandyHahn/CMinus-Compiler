@@ -44,7 +44,15 @@ public class SemanticAnalyzer implements AbsynVisitor {
   // Helper function to prepend a given def to the symbol table 
   private void prependToSymbolTable(String name, Dec def, int level) {
     symbolTable.putIfAbsent(name, new ArrayList<NodeType>());
-    symbolTable.get(name).add(0, new NodeType(name, def, level));
+    ArrayList<NodeType> nodes = symbolTable.get(name);
+    for (int i = 0; i < nodes.size(); i++) {
+      NodeType node = nodes.get(i);
+      if (node.level == level && node.name.equals(name) && !(node.def instanceof FunctionDec)) {
+        reportError(def, "Variable already defined", "Variable \"" + name + "\" already has a definition in the scope and can not be redefined.");
+        return;
+      }
+    }
+    nodes.add(0, new NodeType(name, def, level));
   }
 
   private void printNodeType(NodeType node, int level) {
