@@ -83,8 +83,8 @@ class CM {
         System.setOut(originalOut);
       }
 
-      if (OUTPUT_SYM && result != null) {
-        System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".abs"), true));
+      if (OUTPUT_SYM && result != null && parser.isValid) {
+        System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".sym"), true));
         AbsynVisitor visitor = new SemanticAnalyzer();
         result.accept(visitor, 0); 
         System.setOut(originalOut);

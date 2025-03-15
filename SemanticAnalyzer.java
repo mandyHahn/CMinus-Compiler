@@ -3,6 +3,30 @@ import java.util.HashMap;
 
 import absyn.*;
 
+/*
+ * Type checking TODO:
+ * - function call matches parameters
+ * - return type matches return
+ * - return exists if return type != void
+ * - make sure IndexVar [exp] exp is integer  -------
+  
+        NilExp
+        IntExp -----
+        BoolExp -----
+        VarExp -----
+        CallExp // still need parameter checking
+        OpExp -----
+        AssignExp -----
+        IfExp -----
+        WhileExp -----
+        ReturnExp // check matches type of function
+        CompoundExp ???
+
+        fix the "changing to int" error messages -- not consistent
+        fix If body defined already, error on prototype
+        fix check if main exists as last function
+ */
+
 public class SemanticAnalyzer implements AbsynVisitor {
 
   private class NodeType {
@@ -18,7 +42,13 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   final static int SPACES = 4;
+  final static SimpleDec dummyInt = new SimpleDec(0, 0, new NameTy(0, 0, NameTy.INT), "");
+  final static SimpleDec dummyBool = new SimpleDec(0, 0, new NameTy(0, 0, NameTy.BOOL), "");
+  final static SimpleDec dummyVoid = new SimpleDec(0, 0, new NameTy(0, 0, NameTy.VOID), "");
+
   private static HashMap<String, ArrayList<NodeType>> symbolTable;
+  private static FunctionDec currentFunction;
+  private static boolean hasReturn;
 
   // Intialize the SemanticAnalyzer with a new symbol table, and add the input and output functions at depth 0
   // Which will mean they never get printed but are accessible to all functions
@@ -112,10 +142,10 @@ public class SemanticAnalyzer implements AbsynVisitor {
   // Can be made public later if needed elsewhere
   private void reportError(Absyn node, String reason, String message) { 
     if (node.row >= 0 && node.col >= 0) {
-      String errorHeader = "Error in " + (node.row + 1) + ", column " + (node.col + 1) + ": " + reason + "\n"; 
-      System.err.println(errorHeader + message);
+      String errorHeader = "Error on line " + (node.row + 1) + ", column " + (node.col + 1) + ": " + reason + "\n"; 
+      System.err.println(errorHeader + message + "\n");
     } else {
-      System.err.println("Error: " + reason + "\n" + message);
+      System.err.println("Error: " + reason + "\n" + message + "\n");
     }
   }
 
@@ -182,10 +212,92 @@ public class SemanticAnalyzer implements AbsynVisitor {
     return true;
   }
 
+
+boolean isInteger(Exp node) {
+  return node.dtype.typ.typ == NameTy.INT;
+}
+
+boolean isBoolean(Exp node) {
+  return node.dtype.typ.typ == NameTy.INT || node.dtype.typ.typ == NameTy.BOOL;
+}
+
+boolean isInteger(Dec node) {
+  NameTy type = null;
+  if (node instanceof FunctionDec) {
+    type = ((FunctionDec)node).result;
+  }
+  else if (node instanceof ArrayDec) {
+    type = ((ArrayDec)node).typ;
+  }
+  else {
+    type = ((SimpleDec)node).typ;
+  }
+
+  return type.typ == NameTy.INT;
+}
+
+boolean isBoolean(Dec node) {
+  NameTy type = null;
+  if (node instanceof FunctionDec) {
+    type = ((FunctionDec)node).result;
+  }
+  else if (node instanceof ArrayDec) {
+    type = ((ArrayDec)node).typ;
+  }
+  else {
+    type = ((SimpleDec)node).typ;
+  }
+
+  return type.typ == NameTy.INT || type.typ == NameTy.BOOL;
+}
+
+// Dec getFromTable(String name, boolean isArray, boolean isFunction) {
+//   ArrayList<NodeType> nodes = symbolTable.get(name);  
+//   System.out.println(name + " level: " + nodes.size());
+//   for (int i = 0; i < nodes.size(); i++) {
+//     NodeType node = nodes.get(i);
+//     System.out.println(node.name + " " + node.level + " " + node.name == name);
+//     if (!node.name.equals(name)) {
+//       continue;
+//     }
+
+//     // TODO: these are the only three cases right?
+//     if (isArray) { 
+//       System.out.println("here arr");
+//       if (node.def instanceof ArrayDec) { return node.def; }
+//     }
+//     else if (isFunction) { 
+//       System.out.println("here func");
+//       if (node.def instanceof FunctionDec) { return node.def; }
+//     }
+//     else {
+//       System.out.println("here");
+//       if (node.def instanceof SimpleDec) { return node.def; }
+//     }
+//   }
+
+//   return null;
+// }
+
+Dec getFromTable(String name) {
+  ArrayList<NodeType> nodes = symbolTable.get(name);  
+  for (int i = 0; i < nodes.size(); i++) {
+    NodeType node = nodes.get(i);
+    if (!node.name.equals(name)) {
+      continue;
+    }
+
+    return node.def; 
+  }
+
+  return null;
+}
+
+
   /* 
-    --------------------------------
+    ------------------------------------------------
       BEGIN VISITOR VISIT FUNCTION IMPLEMENTATIONS 
-    --------------------------------
+    ------------------------------------------------
   */
   public void visit(ExpList expList, int level) {
     while (expList != null) {
@@ -197,6 +309,13 @@ public class SemanticAnalyzer implements AbsynVisitor {
   public void visit(AssignExp exp, int level) {
     exp.lhs.accept(this, level);
     exp.rhs.accept(this, level);
+
+    // can't just check for equivalence, since int is a subset of bool (and this accounts for RHS being void)
+    if ((isInteger(exp.lhs.dtype) && !isInteger(exp.rhs.dtype)) || (isBoolean(exp.lhs.dtype) && !isBoolean(exp.rhs.dtype))) {
+      reportError(exp, "Invalid assignment", "Cannot assign type " + exp.rhs.dtype.typ.name() + " to variable \"" + exp.lhs.variable.name + "\" (type " + exp.lhs.dtype.typ.name() + ")");
+    }
+
+    exp.dtype = exp.rhs.dtype;
   }
 
   public void visit(IfExp exp, int level) {
@@ -212,15 +331,76 @@ public class SemanticAnalyzer implements AbsynVisitor {
       deleteSymbolTableLevelAndPrint(level + 1);
       printAtLevel("Exiting the scope for else statement", level);
     }
+
+    // isBoolean checks if integer or boolean (it is subset of bool)
+    if ( !isBoolean(exp.test) ) {
+      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.typ.name() + " where int or bool is expected");
+    }
+    exp.dtype = exp.test.dtype; // is this even needed?
   }
 
   public void visit(IntExp exp, int level) {
+    exp.dtype = dummyInt;
   }
 
   public void visit(OpExp exp, int level) {
     if (exp.left != null)
       exp.left.accept(this, level);
     exp.right.accept(this, level);
+
+    switch( exp.op ) {
+      // arithmetic operators
+      case OpExp.PLUS:
+      case OpExp.MINUS:
+      case OpExp.MUL:
+      case OpExp.DIV:
+        if( !isInteger(exp.left) ) {
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + " where int is expected");
+        }
+        
+        // fallthrough
+      case OpExp.UMINUS:
+        if( !isInteger(exp.right) ) {
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + " where int is expected");
+        }
+        
+        exp.dtype = dummyInt;
+        break;
+        
+      // relational operators
+      case OpExp.EQ:
+      case OpExp.LT:
+      case OpExp.GT:
+      case OpExp.LE:
+      case OpExp.GE:
+      case OpExp.NE:
+        if( !isInteger(exp.left) ) {
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + " where int is expected");
+        }
+        else if( !isInteger(exp.right) ) {
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + " where int is expected");
+        }
+        
+        exp.dtype = dummyBool;
+        break;
+        
+      
+      // boolean operators
+      case OpExp.AND:
+      case OpExp.OR:
+        if( !isBoolean(exp.left) ) {
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + "where bool is expected");
+        }
+
+        // fallthrough
+      case OpExp.NOT:
+        if( !isBoolean(exp.right) ) {
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + "where bool is expected");
+        }
+        
+        exp.dtype = dummyBool;
+        break;
+    }
   }
 
   public void visit(ReturnExp exp, int level) {
@@ -229,10 +409,40 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
   public void visit(VarExp exp, int level) {
     exp.variable.accept(this, level);
+    String name = (exp.variable instanceof IndexVar) ? ((IndexVar)exp.variable).name : ((SimpleVar)exp.variable).name;
+
+    Dec type = getFromTable(name);
+
+    if (type == null) {
+      reportError(exp, "Missing declaration", "No declaration found in scope (or parent scopes) for variable \"" + name + "\"");
+      exp.dtype = dummyInt; // is this correct?
+      return;
+    }
+
+    if (type instanceof FunctionDec) {
+      reportError(exp, "Invalid access", "Cannot use function \"" + name + "\" as a variable");
+      exp.dtype = dummyInt;
+      return;
+    }
+    else if (exp.variable instanceof IndexVar && !(type instanceof ArrayDec)) {
+      reportError(exp, "Invalid index access", "Cannot access index of non-array variable \"" + name + "\"");
+    }
+    else if (exp.variable instanceof SimpleVar && !(type instanceof SimpleDec)){
+      reportError(exp, "Invalid access", "Cannot use array \"" + name + "\" as variable");
+    }
+    
+    // must be int or bool, void not possible for non function types (handled in symbol table)
+    if (isInteger(type)) {
+      exp.dtype = dummyInt;
+    }
+    else {
+      exp.dtype = dummyBool;
+    }
   }
 
   @Override
   public void visit(BoolExp exp, int level) {
+    exp.dtype = dummyBool;
   }
 
   @Override
@@ -249,6 +459,32 @@ public class SemanticAnalyzer implements AbsynVisitor {
   public void visit(CallExp exp, int level) {
     if (exp.args != null) {
       exp.args.accept(this, level);
+    }
+    //TODO: check args match definition args
+    Dec type = getFromTable(exp.func);
+    
+    if (type == null) {
+      reportError(exp, "Missing function declaration", "No function declaration found for \"" + exp.func + "\"");
+      exp.dtype = dummyInt;
+      return;
+    }
+
+    if (type instanceof SimpleDec) {
+      reportError(exp, "Invalid call", "Called variable \"" + exp.func + "\" is not a function (type " + ((SimpleDec)type).typ.name() + ")");
+    }
+    else if (type instanceof ArrayDec) {
+      reportError(exp, "Invalid call", "Called variable \"" + exp.func + "\" is not a function (type " + ((ArrayDec)type).typ.name() + "[])");
+    }
+
+    if (isInteger(type)) {
+      exp.dtype = dummyInt;
+    }
+    else if (isBoolean(type)) {
+      exp.dtype = dummyBool;
+    }
+    else {
+      // void
+      exp.dtype = dummyVoid;
     }
   }
 
@@ -291,6 +527,10 @@ public class SemanticAnalyzer implements AbsynVisitor {
   @Override
   public void visit(IndexVar exp, int level) {
     exp.index.accept(this, level);
+
+    if (!isInteger(exp.index)) {
+      reportError(exp, "Invalid index", "Index type is " + exp.index.dtype.typ.name() + " where int is expected");
+    }
   }
 
   @Override
@@ -326,6 +566,12 @@ public class SemanticAnalyzer implements AbsynVisitor {
     exp.body.accept(this, level + 1);
     deleteSymbolTableLevelAndPrint(level + 1);
     printAtLevel("Leaving the scope for while statement", level);
+
+    // isBoolean checks if integer or boolean (it is subset of bool)
+    if ( !isBoolean(exp.test) ) {
+      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.typ.name() + " where int or bool is expected");
+    }
+    exp.dtype = exp.test.dtype; // is this even needed?
   }
 
   @Override
