@@ -1,6 +1,7 @@
 *$CUP$*
 *.class
 *.abs
+*.sym
 sym.java
 Lexer.java
 parser.java

@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Stack;
 
 import absyn.*;
 
@@ -24,6 +25,8 @@ import absyn.*;
 
         fix the "changing to int" error messages -- not consistent
         fix If body defined already, error on prototype
+        fix double adding function to symbol table with prototype vs declaration
+
         fix check if main exists as last function
  */
 
@@ -50,14 +53,39 @@ public class SemanticAnalyzer implements AbsynVisitor {
   private static FunctionDec currentFunction;
   private static boolean hasReturn;
 
+  // info to dictate what scope type to print
+  public final static int GENERIC = 0;
+  public final static int FUNCTION = 1;
+  public final static int IF  = 2;
+  public final static int ELSE = 3;
+  public final static int WHILE = 4;
+  private static Stack<Integer> scopeType = new Stack<Integer>();
+
+  private String getScopeString(String prefix) {
+    switch (scopeType.peek()) {
+      case GENERIC:
+        return prefix + " scope block";
+      case FUNCTION:
+        return prefix + " scope for function " + currentFunction.func;
+      case IF:
+        return prefix + " scope for if statement";
+      case ELSE:
+        return prefix + " scope for else statement";
+      case WHILE:
+        return prefix + " scope for while statement";
+    }
+
+    return " INVALID BLOCK";
+  }
+
   // Intialize the SemanticAnalyzer with a new symbol table, and add the input and output functions at depth 0
   // Which will mean they never get printed but are accessible to all functions
   SemanticAnalyzer() {
     symbolTable = new HashMap<String, ArrayList<NodeType>>();
     FunctionDec input = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.INT), "input", new VarDecList(null, null), null);
     FunctionDec output = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.VOID), "output", new VarDecList(new SimpleDec(0, 0, new NameTy(0, 0, NameTy.INT), "input"), null), null);
-    prependToSymbolTable("input", input, 0);
-    prependToSymbolTable("output", output, 0);
+    prependToSymbolTable("input", input, -1);
+    prependToSymbolTable("output", output, -1);
   }
 
   private void indent(int level) {
@@ -319,17 +347,14 @@ Dec getFromTable(String name) {
   }
 
   public void visit(IfExp exp, int level) {
-    printAtLevel("Entering scope for if statement", level);
-    exp.test.accept(this, level + 1);
-    exp.thenpart.accept(this, level + 1);
-    deleteSymbolTableLevelAndPrint(level + 1);
-    printAtLevel("Leaving the if statement scope", level);
+    exp.test.accept(this, level); // nothing should be declared or added to symbol table here
 
-    if (exp.elsepart != null) {
-      printAtLevel("Entering scope for else statement", level);
-      exp.elsepart.accept(this, level + 1);
-      deleteSymbolTableLevelAndPrint(level + 1);
-      printAtLevel("Exiting the scope for else statement", level);
+    scopeType.push(IF);
+    exp.thenpart.accept(this, level);
+    
+    if (exp.elsepart != null && !(exp.elsepart instanceof NilExp) ) {
+      scopeType.push(ELSE);
+      exp.elsepart.accept(this, level);      
     }
 
     // isBoolean checks if integer or boolean (it is subset of bool)
@@ -490,37 +515,52 @@ Dec getFromTable(String name) {
 
   @Override
   public void visit(CompoundExp exp, int level) {
+    // System.err.println("ENTER " + scopeType.size() + " level: " + level + " type: " + scopeType);
+    
+    if (scopeType.size() < level) {
+      System.err.println("pushed generic");
+      scopeType.push(GENERIC);
+    }
+    
+    printAtLevel(getScopeString("Entering"), level);
     if (exp.decs != null) {
-      exp.decs.accept(this, level);
+      exp.decs.accept(this, level+1);
     }
     if (exp.exps != null) {
-      exp.exps.accept(this, level);
+      exp.exps.accept(this, level+1);
     }
+    // System.err.println("EXIT " + scopeType.size() + " level: " + level + " type: " + scopeType);
+    deleteSymbolTableLevelAndPrint(level+1);
+    printAtLevel(getScopeString("Exiting"), level);
+    scopeType.pop();
+
   }
 
   @Override
   public void visit(DecList exp, int level) {
     printAtLevel("Entering the global scope", level);
     while (exp != null) {
-      exp.head.accept(this, level + 1);
+      exp.head.accept(this, level+1);
       exp = exp.tail;
     }
-    deleteSymbolTableLevelAndPrint(level + 1);
+    deleteSymbolTableLevelAndPrint(level+1);
     printAtLevel("Exiting the global scope", level);
   }
 
   @Override
   public void visit(FunctionDec exp, int level) {
     boolean success = addFunctionToSymbolTable(exp, level);
-    if (success) {
-      printAtLevel("Entering the scope for function " + exp.func, level);
-      exp.result.accept(this, level + 1);
+
+    // TODO: remove NilExp check if scope messages shouold be output for prototypes
+    if (success && !(exp.body instanceof NilExp)) {
+      currentFunction = exp;
+      scopeType.push(FUNCTION);
+
+      exp.result.accept(this, level);
       if (exp.params != null) {
-        exp.params.accept(this, level + 1);
+        exp.params.accept(this, level + 1); // need to set level to one deeper for params
       }
-      exp.body.accept(this, level + 1);
-      deleteSymbolTableLevelAndPrint(level + 1);
-      printAtLevel("Leaving the function scope", level);
+      exp.body.accept(this, level);
     }
   }
 
@@ -561,11 +601,9 @@ Dec getFromTable(String name) {
 
   @Override
   public void visit(WhileExp exp, int level) {
-    printAtLevel("Entering the scope for while statement", level);
-    exp.test.accept(this, level + 1);
-    exp.body.accept(this, level + 1);
-    deleteSymbolTableLevelAndPrint(level + 1);
-    printAtLevel("Leaving the scope for while statement", level);
+    scopeType.push(WHILE);
+    exp.test.accept(this, level);
+    exp.body.accept(this, level);
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if ( !isBoolean(exp.test) ) {
