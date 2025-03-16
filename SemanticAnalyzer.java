@@ -6,24 +6,24 @@ import absyn.*;
 
 /*
  * Type checking TODO:
- * - function call matches parameters
- * - return type matches return
+ * - function call matches parameters ------
+ * - return type matches return ------
  * - return exists if return type != void
  * - make sure IndexVar [exp] exp is integer  -------
   
-        NilExp
+        NilExp -----
         IntExp -----
         BoolExp -----
         VarExp -----
-        CallExp // still need parameter checking
+        CallExp -----
         OpExp -----
         AssignExp -----
         IfExp -----
         WhileExp -----
-        ReturnExp // check matches type of function
-        CompoundExp ???
+        ReturnExp ----- 
+        CompoundExp ----- 
 
-        fix the "changing to int" error messages -- not consistent
+        fix the "changing to int" error messages -- not consistent ------
         fix If body defined already, error on prototype
         fix double adding function to symbol table with prototype vs declaration
 
@@ -82,7 +82,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
   // Which will mean they never get printed but are accessible to all functions
   SemanticAnalyzer() {
     symbolTable = new HashMap<String, ArrayList<NodeType>>();
-    FunctionDec input = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.INT), "input", new VarDecList(null, null), null);
+    FunctionDec input = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.INT), "input", null, null);
     FunctionDec output = new FunctionDec(0, 0, new NameTy(0, 0, NameTy.VOID), "output", new VarDecList(new SimpleDec(0, 0, new NameTy(0, 0, NameTy.INT), "input"), null), null);
     prependToSymbolTable("input", input, -1);
     prependToSymbolTable("output", output, -1);
@@ -242,11 +242,19 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
 
 boolean isInteger(Exp node) {
-  return node.dtype.typ.typ == NameTy.INT;
+  if (node == null || node instanceof NilExp) {
+    return false;
+  }
+
+  return node.dtype.type().equals("int");
 }
 
 boolean isBoolean(Exp node) {
-  return node.dtype.typ.typ == NameTy.INT || node.dtype.typ.typ == NameTy.BOOL;
+  if (node == null || node instanceof NilExp) {
+    return false;
+  }
+
+  return node.dtype.type().equals("bool") || node.dtype.type().equals("int");
 }
 
 boolean isInteger(Dec node) {
@@ -338,12 +346,19 @@ Dec getFromTable(String name) {
     exp.lhs.accept(this, level);
     exp.rhs.accept(this, level);
 
-    // can't just check for equivalence, since int is a subset of bool (and this accounts for RHS being void)
-    if ((isInteger(exp.lhs.dtype) && !isInteger(exp.rhs.dtype)) || (isBoolean(exp.lhs.dtype) && !isBoolean(exp.rhs.dtype))) {
-      reportError(exp, "Invalid assignment", "Cannot assign type " + exp.rhs.dtype.typ.name() + " to variable \"" + exp.lhs.variable.name + "\" (type " + exp.lhs.dtype.typ.name() + ")");
+    if (exp.lhs.dtype instanceof ArrayDec) {
+      reportError(exp, "Invalid assignment", "Cannot assign an expression to an array");
+    }
+    else if (exp.rhs.dtype instanceof ArrayDec) {
+      reportError(exp.rhs, "Invalid assignment", "Cannot assign an array to a variable"); // ???
     }
 
-    exp.dtype = exp.rhs.dtype;
+    // can't just check for equivalence, since int is a subset of bool (and this accounts for RHS being void)
+    else if ((isInteger(exp.lhs.dtype) && !isInteger(exp.rhs.dtype)) || (isBoolean(exp.lhs.dtype) && !isBoolean(exp.rhs.dtype))) {
+      reportError(exp, "Invalid assignment", "Cannot assign type " + exp.rhs.dtype.type() + " to variable \"" + exp.lhs.variable.name + "\" (type " + exp.lhs.dtype.type() + ")");
+    }
+
+    exp.dtype = exp.lhs.dtype;
   }
 
   public void visit(IfExp exp, int level) {
@@ -359,7 +374,7 @@ Dec getFromTable(String name) {
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if ( !isBoolean(exp.test) ) {
-      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.typ.name() + " where int or bool is expected");
+      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.type() + " where int or bool is expected");
     }
     exp.dtype = exp.test.dtype; // is this even needed?
   }
@@ -373,6 +388,14 @@ Dec getFromTable(String name) {
       exp.left.accept(this, level);
     exp.right.accept(this, level);
 
+    if (exp.left != null && exp.left.dtype instanceof ArrayDec) {
+      reportError(exp.left, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
+    }
+    
+    if (exp.right.dtype instanceof ArrayDec) {
+      reportError(exp.right, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
+    }
+
     switch( exp.op ) {
       // arithmetic operators
       case OpExp.PLUS:
@@ -380,13 +403,13 @@ Dec getFromTable(String name) {
       case OpExp.MUL:
       case OpExp.DIV:
         if( !isInteger(exp.left) ) {
-          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + " where int is expected");
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + " where int is expected");
         }
         
         // fallthrough
       case OpExp.UMINUS:
         if( !isInteger(exp.right) ) {
-          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + " where int is expected");
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.type() + " where int is expected");
         }
         
         exp.dtype = dummyInt;
@@ -400,10 +423,10 @@ Dec getFromTable(String name) {
       case OpExp.GE:
       case OpExp.NE:
         if( !isInteger(exp.left) ) {
-          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + " where int is expected");
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + " where int is expected");
         }
         else if( !isInteger(exp.right) ) {
-          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + " where int is expected");
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.type() + " where int is expected");
         }
         
         exp.dtype = dummyBool;
@@ -414,13 +437,13 @@ Dec getFromTable(String name) {
       case OpExp.AND:
       case OpExp.OR:
         if( !isBoolean(exp.left) ) {
-          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.typ.name() + "where bool is expected");
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + "where bool is expected");
         }
 
         // fallthrough
       case OpExp.NOT:
         if( !isBoolean(exp.right) ) {
-          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.typ.name() + "where bool is expected");
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.type() + "where bool is expected");
         }
         
         exp.dtype = dummyBool;
@@ -430,6 +453,15 @@ Dec getFromTable(String name) {
 
   public void visit(ReturnExp exp, int level) {
     exp.exp.accept(this, level);
+
+    if (exp.exp.dtype instanceof ArrayDec) {
+      reportError(exp.exp, "Invalid return type", "Cannot return an array");
+    }
+    if((isInteger(currentFunction) && !isInteger(exp.exp)) || (isBoolean(currentFunction) && !isBoolean(exp.exp)) || (!isBoolean(currentFunction) && isBoolean(exp.exp))) {
+      reportError(exp.exp, "Invalid return type", "Cannot return type " + exp.exp.dtype.type() + " from function \"" + currentFunction.func + "\" (return type " + currentFunction.result.name() + ")");
+    }
+
+    exp.dtype = (isInteger(currentFunction) ? dummyInt : dummyBool);
   }
 
   public void visit(VarExp exp, int level) {
@@ -439,7 +471,7 @@ Dec getFromTable(String name) {
     Dec type = getFromTable(name);
 
     if (type == null) {
-      reportError(exp, "Missing declaration", "No declaration found in scope (or parent scopes) for variable \"" + name + "\"");
+      reportError(exp, "Missing declaration", "No declaration found in scope (or parent scopes) for variable \"" + name + "\"\n" + "Assuming type to be int.");
       exp.dtype = dummyInt; // is this correct?
       return;
     }
@@ -449,13 +481,15 @@ Dec getFromTable(String name) {
       exp.dtype = dummyInt;
       return;
     }
+    else if (exp.variable instanceof SimpleVar && !(type instanceof SimpleDec)){
+      // might not be an error, but make sure to set dtype specially so higher scopes can check
+      exp.dtype = (VarDec)type;
+      return;
+    }
     else if (exp.variable instanceof IndexVar && !(type instanceof ArrayDec)) {
       reportError(exp, "Invalid index access", "Cannot access index of non-array variable \"" + name + "\"");
     }
-    else if (exp.variable instanceof SimpleVar && !(type instanceof SimpleDec)){
-      reportError(exp, "Invalid access", "Cannot use array \"" + name + "\" as variable");
-    }
-    
+
     // must be int or bool, void not possible for non function types (handled in symbol table)
     if (isInteger(type)) {
       exp.dtype = dummyInt;
@@ -473,7 +507,7 @@ Dec getFromTable(String name) {
   @Override
   public void visit(ArrayDec exp, int level) {
     if (exp.typ.typ == NameTy.VOID) {
-      System.err.println("Error: Variable " + exp.name + " cannot be of type void. Changing to int.");
+      reportError(exp, "Invalid declaration", "Variable " + exp.name + " cannot be of type void. Changing to int.");
       exp.typ.typ = NameTy.INT;
     }
     prependToSymbolTable(exp.name, exp, level);
@@ -485,7 +519,7 @@ Dec getFromTable(String name) {
     if (exp.args != null) {
       exp.args.accept(this, level);
     }
-    //TODO: check args match definition args
+
     Dec type = getFromTable(exp.func);
     
     if (type == null) {
@@ -499,6 +533,26 @@ Dec getFromTable(String name) {
     }
     else if (type instanceof ArrayDec) {
       reportError(exp, "Invalid call", "Called variable \"" + exp.func + "\" is not a function (type " + ((ArrayDec)type).typ.name() + "[])");
+    }
+    else {
+      FunctionDec function = (FunctionDec)type;
+      VarDecList functionParams = function.params;
+      ExpList callExps = exp.args;
+      int paramNum = 1;
+  
+      // Verify the types of the parameters match
+      while (functionParams != null && callExps != null) {
+        if (!functionParams.head.type().equals(callExps.head.dtype.type())) {
+          reportError(callExps.head, "Invalid parameter", "Call for function \"" + function.func + "\" parameter " + paramNum + 
+            " has an unexpected type.\n" +
+            "  Expected: " + functionParams.head.type() + "\n" +
+            "  Recieved: " + callExps.head.dtype.type());
+            break;
+        }
+        paramNum++;
+        functionParams = functionParams.tail;
+        callExps = callExps.tail;
+      }
     }
 
     if (isInteger(type)) {
@@ -569,7 +623,7 @@ Dec getFromTable(String name) {
     exp.index.accept(this, level);
 
     if (!isInteger(exp.index)) {
-      reportError(exp, "Invalid index", "Index type is " + exp.index.dtype.typ.name() + " where int is expected");
+      reportError(exp, "Invalid index", "Index type is " + exp.index.dtype.type() + " where int is expected");
     }
   }
 
@@ -580,7 +634,7 @@ Dec getFromTable(String name) {
   @Override
   public void visit(SimpleDec exp, int level) {
     if (exp.typ.typ == NameTy.VOID) {
-      System.err.println("Error: Variable " + exp.name + " cannot be of type void. Changing to int.");
+      reportError(exp, "Invalid declaration", "Variable " + exp.name + " cannot be of type void. Changing to int.");
       exp.typ.typ = NameTy.INT;
     }
     prependToSymbolTable(exp.name, exp, level);
@@ -607,13 +661,14 @@ Dec getFromTable(String name) {
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if ( !isBoolean(exp.test) ) {
-      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.typ.name() + " where int or bool is expected");
+      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.type() + " where int or bool is expected");
     }
     exp.dtype = exp.test.dtype; // is this even needed?
   }
 
   @Override
   public void visit(NilExp exp, int level) {
+    exp.dtype = dummyVoid;
   }
 
 }
