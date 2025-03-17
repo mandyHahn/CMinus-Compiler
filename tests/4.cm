@@ -1,21 +1,24 @@
-/* Expected errors: 
-  line 8 -> Bad comma after param list "invalid parameter declaration" 
-  line 12 -> Can't put a function inside a function "variable declaration needs to end with a semicolon
-    -> This happens since int is a valid variable type, but when declaring a variable it is expected to end with ; instead of (
-  line 20 -> Increment operator is not supported, "Invalid statement"
+/* This file demonstrates some type checking errors
+Expected errors:
+  1. (line 15) bad test condition for if statement (test condition is void)
+  2. (line 20) bad array index (bool where int is expected)
+  3. (line 23) bad return (can't return bool from int main())
 */
 
-/* Invalid trailing comma in header */
-int func_header(int a,);
+void vFunc(void) { }
 
-int main(int one_param, bool two_param) {
-  /* Putting a function inside a function isn't good */
-  int function_inside_function_no_bueno(void) {
-    int a;
-    a = 14;
-    return a;
+int main(void) {
+  bool arr[10];
+  bool y;
+
+  /* void test condition */
+  if ( vFunc() ) {
+    return 10;
   }
 
-  /* invalid statement, ++ increment is not supported */
-  a++;
+  /* bool cannot be used to index array */
+  y = arr[true];
+
+  /* return type should be int not bool */
+  return y;
 }

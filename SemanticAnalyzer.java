@@ -4,32 +4,6 @@ import java.util.Stack;
 
 import absyn.*;
 
-/*
- * Type checking TODO:
- * - function call matches parameters ------
- * - return type matches return ------
- * - return exists if return type != void
- * - make sure IndexVar [exp] exp is integer  -------
-  
-        NilExp -----
-        IntExp -----
-        BoolExp -----
-        VarExp -----
-        CallExp -----
-        OpExp -----
-        AssignExp -----
-        IfExp -----
-        WhileExp -----
-        ReturnExp ----- 
-        CompoundExp ----- 
-
-        fix the "changing to int" error messages -- not consistent ------
-        fix If body defined already, error on prototype
-        fix double adding function to symbol table with prototype vs declaration
-
-        fix check if main exists as last function
- */
-
 public class SemanticAnalyzer implements AbsynVisitor {
 
   private class NodeType {
@@ -51,6 +25,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
   private static HashMap<String, ArrayList<NodeType>> symbolTable;
   private static FunctionDec currentFunction;
+  private static int currentFuncScope;
   private static boolean hasReturn;
 
   // info to dictate what scope type to print
@@ -185,53 +160,74 @@ public class SemanticAnalyzer implements AbsynVisitor {
       return true;
     }
 
+    if (function.func.equals("output") || function.func.equals("input")) {
+      reportError(function, "Invalid function redeclaration", "Cannot redefine \"" + function.func + "\", overrides built in function.");
+      return false;
+    }
+
     for (int i = 0; i < existing.size(); i++) {
       NodeType node = existing.get(i);
-      // Verify they have the same name to avoid potential hm conflicts
-      if (node.def instanceof FunctionDec && ((FunctionDec) node.def).func.equals(function.func)) {
-        FunctionDec existingFunction = (FunctionDec) node.def;
+      // Verify they have the same name to avoid potential hm conflicts (skip if they don't have the same name / type)
+      if (!(node.def instanceof FunctionDec) || !((FunctionDec) node.def).func.equals(function.func)) {
+        continue;
+      }
 
-        VarDecList existingParams = existingFunction.params;
-        VarDecList newParams = function.params;
-        int paramNum = 1;
+      FunctionDec existingFunction = (FunctionDec) node.def;
 
-        // Verify the types of the parameters match
-        while (existingParams != null && newParams != null) {
-          if (!existingParams.head.type().equals(newParams.head.type())) {
-            reportError(function, "Conflicting parameter types", "Function \"" + function.func + "\" parameter " + paramNum + 
-              " has a conflicting type with existing function with the same name.\n" +
-              "  Existing type for param " + paramNum + ": " + existingParams.head.type() + "\n" +
-              "  New type for param " + paramNum + ": " + newParams.head.type());
-            return false;
-          }
-          paramNum++;
-          existingParams = existingParams.tail;
-          newParams = newParams.tail;
-        }
-        // We've iterated through one list but the other still isn't empty; conflicting lengths
-        if (existingParams != null || newParams != null) {
-          reportError(function, "Conflicting parameter count", "Function \"" + function.func + 
-            "\" has a conflicting number of parameters with existing function with the same name.\n" +
-            "  Existing number of parameters: " + getParamListLength(existingFunction.params) + "\n" +
-            "  New number of parameters: " + getParamListLength(function.params));
+      VarDecList existingParams = existingFunction.params;
+      VarDecList newParams = function.params;
+      int paramNum = 1;
+
+      // Verify the types of the parameters match
+      while (existingParams != null && newParams != null) {
+        if (!existingParams.head.type().equals(newParams.head.type())) {
+          reportError(function, "Conflicting parameter types", "Function \"" + function.func + "\" parameter " + paramNum + 
+            " has a conflicting type with existing function with the same name.\n" +
+            "  Existing type for param " + paramNum + ": " + existingParams.head.type() + "\n" +
+            "  New type for param " + paramNum + ": " + newParams.head.type());
           return false;
         }
+        paramNum++;
+        existingParams = existingParams.tail;
+        newParams = newParams.tail;
+      }
 
-        // Verify the return types match
-        if (!existingFunction.result.name().equals(function.result.name())) {
-          reportError(function, "Conflicting function return types", "Function \"" + function.func + 
-            "\" has a conflicting return type with existing function with the same name.\n" +
-            "  Existing return type: " + existingFunction.result.name() + "\n" +
-            "  New return type: " + function.result.name());
-          return false;
-        }
+      // We've iterated through one list but the other still isn't empty; conflicting lengths
+      if (existingParams != null || newParams != null) {
+        reportError(function, "Conflicting parameter count", "Function \"" + function.func + 
+          "\" has a conflicting number of parameters with existing function with the same name.\n" +
+          "  Existing number of parameters: " + getParamListLength(existingFunction.params) + "\n" +
+          "  New number of parameters: " + getParamListLength(function.params));
+        return false;
+      }
 
-        // So far, valid. But need to check that both don't have have a body. 
-        if (!(existingFunction.body instanceof NilExp) && !(function.body instanceof NilExp)) {
-          reportError(function, "Function already defined", "Function \"" + function.func + 
-            "\" already has a definition in the scope and can not be redefined.");
-          return false;
-        }
+      // Verify the return types match
+      if (!existingFunction.result.name().equals(function.result.name())) {
+        reportError(function, "Conflicting function return types", "Function \"" + function.func + 
+          "\" has a conflicting return type with existing function with the same name.\n" +
+          "  Existing return type: " + existingFunction.result.name() + "\n" +
+          "  New return type: " + function.result.name());
+        return false;
+      }
+      
+      // So far valid! Now just check for redeclarations
+      // If the existing definition doesn't have a body defined, but the new one does
+      // just add the body to the old one
+      if ((existingFunction.body instanceof NilExp) && !(function.body instanceof NilExp)) {
+        existingFunction.body = function.body;
+        return true;
+      }
+      // otherwise if we're redeclaring the body, throw specific error
+      else if (!(existingFunction.body instanceof NilExp) && !(function.body instanceof NilExp)) {
+        reportError(function, "Function already defined", "Function \"" + function.func + 
+        "\" already has a definition in the scope and can not be redefined.");
+        return false;
+      }
+      // otherwise, generic redeclaration error
+      else {
+        reportError(function, "Function already declared", "Function \"" + function.func + 
+        "\" already has a declaration scope and can not be redeclared.");
+        return false;
       }
     }
 
@@ -287,36 +283,14 @@ boolean isBoolean(Dec node) {
   return type.typ == NameTy.INT || type.typ == NameTy.BOOL;
 }
 
-// Dec getFromTable(String name, boolean isArray, boolean isFunction) {
-//   ArrayList<NodeType> nodes = symbolTable.get(name);  
-//   System.out.println(name + " level: " + nodes.size());
-//   for (int i = 0; i < nodes.size(); i++) {
-//     NodeType node = nodes.get(i);
-//     System.out.println(node.name + " " + node.level + " " + node.name == name);
-//     if (!node.name.equals(name)) {
-//       continue;
-//     }
-
-//     // TODO: these are the only three cases right?
-//     if (isArray) { 
-//       System.out.println("here arr");
-//       if (node.def instanceof ArrayDec) { return node.def; }
-//     }
-//     else if (isFunction) { 
-//       System.out.println("here func");
-//       if (node.def instanceof FunctionDec) { return node.def; }
-//     }
-//     else {
-//       System.out.println("here");
-//       if (node.def instanceof SimpleDec) { return node.def; }
-//     }
-//   }
-
-//   return null;
-// }
 
 Dec getFromTable(String name) {
   ArrayList<NodeType> nodes = symbolTable.get(name);  
+  if (nodes == null) {
+    return null;
+  }
+
+
   for (int i = 0; i < nodes.size(); i++) {
     NodeType node = nodes.get(i);
     if (!node.name.equals(name)) {
@@ -374,7 +348,7 @@ Dec getFromTable(String name) {
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if ( !isBoolean(exp.test) ) {
-      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.type() + " where int or bool is expected");
+      reportError(exp, "Invalid test condition", "Test condition in if statement is " + exp.test.dtype.type() + " where int or bool is expected");
     }
     exp.dtype = exp.test.dtype; // is this even needed?
   }
@@ -388,13 +362,13 @@ Dec getFromTable(String name) {
       exp.left.accept(this, level);
     exp.right.accept(this, level);
 
-    if (exp.left != null && exp.left.dtype instanceof ArrayDec) {
-      reportError(exp.left, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
-    }
+    // if (exp.left != null && exp.left.dtype instanceof ArrayDec) {
+    //   reportError(exp.left, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
+    // }
     
-    if (exp.right.dtype instanceof ArrayDec) {
-      reportError(exp.right, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
-    }
+    // if (exp.right.dtype instanceof ArrayDec) {
+    //   reportError(exp.right, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.right.dtype).name + "\" as variable");
+    // }
 
     switch( exp.op ) {
       // arithmetic operators
@@ -416,12 +390,10 @@ Dec getFromTable(String name) {
         break;
         
       // relational operators
-      case OpExp.EQ:
       case OpExp.LT:
       case OpExp.GT:
       case OpExp.LE:
       case OpExp.GE:
-      case OpExp.NE:
         if( !isInteger(exp.left) ) {
           reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + " where int is expected");
         }
@@ -432,18 +404,20 @@ Dec getFromTable(String name) {
         exp.dtype = dummyBool;
         break;
         
-      
+        
       // boolean operators
+      case OpExp.EQ:
+      case OpExp.NE:
       case OpExp.AND:
       case OpExp.OR:
         if( !isBoolean(exp.left) ) {
-          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + "where bool is expected");
+          reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + " where bool or int is expected");
         }
 
         // fallthrough
       case OpExp.NOT:
         if( !isBoolean(exp.right) ) {
-          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.type() + "where bool is expected");
+          reportError(exp.right, "Invalid operand", "Right operand is type " + exp.right.dtype.type() + " where bool or int is expected");
         }
         
         exp.dtype = dummyBool;
@@ -454,10 +428,14 @@ Dec getFromTable(String name) {
   public void visit(ReturnExp exp, int level) {
     exp.exp.accept(this, level);
 
+    if (level == currentFuncScope) {
+      hasReturn = true;
+    }
+
     if (exp.exp.dtype instanceof ArrayDec) {
       reportError(exp.exp, "Invalid return type", "Cannot return an array");
     }
-    if((isInteger(currentFunction) && !isInteger(exp.exp)) || (isBoolean(currentFunction) && !isBoolean(exp.exp)) || (!isBoolean(currentFunction) && isBoolean(exp.exp))) {
+    else if((isInteger(currentFunction) && !isInteger(exp.exp)) || (isBoolean(currentFunction) && !isBoolean(exp.exp)) || (!isBoolean(currentFunction) && isBoolean(exp.exp))) {
       reportError(exp.exp, "Invalid return type", "Cannot return type " + exp.exp.dtype.type() + " from function \"" + currentFunction.func + "\" (return type " + currentFunction.result.name() + ")");
     }
 
@@ -507,7 +485,7 @@ Dec getFromTable(String name) {
   @Override
   public void visit(ArrayDec exp, int level) {
     if (exp.typ.typ == NameTy.VOID) {
-      reportError(exp, "Invalid declaration", "Variable " + exp.name + " cannot be of type void. Changing to int.");
+      reportError(exp, "Invalid declaration", "Array " + exp.name + " cannot be of type void[]. Changing to int[].");
       exp.typ.typ = NameTy.INT;
     }
     prependToSymbolTable(exp.name, exp, level);
@@ -539,6 +517,7 @@ Dec getFromTable(String name) {
       VarDecList functionParams = function.params;
       ExpList callExps = exp.args;
       int paramNum = 1;
+      boolean foundError = false;
   
       // Verify the types of the parameters match
       while (functionParams != null && callExps != null) {
@@ -547,13 +526,20 @@ Dec getFromTable(String name) {
             " has an unexpected type.\n" +
             "  Expected: " + functionParams.head.type() + "\n" +
             "  Recieved: " + callExps.head.dtype.type());
-            break;
+          foundError = true;
+          break;
         }
         paramNum++;
         functionParams = functionParams.tail;
         callExps = callExps.tail;
       }
+
+      if (!foundError && (functionParams != null || callExps != null)) {
+        reportError(exp, "Conflicting argument count", "Call expression for \"" + function.func + 
+          "\" does not have the correct number of arguments.");
+      }
     }
+
 
     if (isInteger(type)) {
       exp.dtype = dummyInt;
@@ -572,7 +558,6 @@ Dec getFromTable(String name) {
     // System.err.println("ENTER " + scopeType.size() + " level: " + level + " type: " + scopeType);
     
     if (scopeType.size() < level) {
-      System.err.println("pushed generic");
       scopeType.push(GENERIC);
     }
     
@@ -595,8 +580,18 @@ Dec getFromTable(String name) {
     printAtLevel("Entering the global scope", level);
     while (exp != null) {
       exp.head.accept(this, level+1);
+      
+      if (exp.tail == null) {
+        // check to make sure the last thing declaired
+        // TODO: is it last function? Or last thing declared? that must be main
+        if (!(exp.head instanceof FunctionDec) || !((FunctionDec)exp.head).func.equals("main")) {
+          reportError(exp.head, "Invalid main", "Last global declaration must be main.");
+        }
+      }
+
       exp = exp.tail;
     }
+
     deleteSymbolTableLevelAndPrint(level+1);
     printAtLevel("Exiting the global scope", level);
   }
@@ -608,6 +603,8 @@ Dec getFromTable(String name) {
     // TODO: remove NilExp check if scope messages shouold be output for prototypes
     if (success && !(exp.body instanceof NilExp)) {
       currentFunction = exp;
+      hasReturn = false;
+      currentFuncScope = level+1;
       scopeType.push(FUNCTION);
 
       exp.result.accept(this, level);
@@ -615,7 +612,14 @@ Dec getFromTable(String name) {
         exp.params.accept(this, level + 1); // need to set level to one deeper for params
       }
       exp.body.accept(this, level);
+      
+      // if there is no return and the function is of return type bool or int
+      if (hasReturn == false && isBoolean(exp)) {
+        reportError(exp, "Function missing return", "Function \"" + exp.func + "\" is non-void, and so must have a return statement at it's top level scope.");
+      }
     }
+
+
   }
 
   @Override
@@ -661,7 +665,7 @@ Dec getFromTable(String name) {
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if ( !isBoolean(exp.test) ) {
-      reportError(exp, "Invalid test condition", "Test condition is " + exp.test.dtype.type() + " where int or bool is expected");
+      reportError(exp, "Invalid test condition", "Test condition in while statement is " + exp.test.dtype.type() + " where int or bool is expected");
     }
     exp.dtype = exp.test.dtype; // is this even needed?
   }

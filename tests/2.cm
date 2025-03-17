@@ -1,37 +1,32 @@
-/* Expected errors: 
-  line 9 -> Reason: Missing semicolon "function prototypes need to end with a semicolon"
-  line 14 -> Reason: Bad variable name, leading to bad "number" token coming from scanner, "invalid type specifier"
-  line 24 -> Reason: "Unmatched ( in call statement"
+/* This file demonstrates some declaration level errors
+Expected errors:
+  1. (line 15) Function (foo) declared twice
+  2. (line 22) Function prototype does not match declaration (mismatched parameters)
+  3. (line 30) Tried to call undefined function (bar)
 */
-bool randomBool(void);
-int randomIntWithMax(int val);
-/* Forgot semicolon. Will log that a semicolon is missing */
-void print(void)
 
-int not_main(void) {
-  /* Invalid variable name, leading to "3" "littlepigs" as separate tokens in scanner
-    This leads to an error */
-  int 3littlepigs; 
-  int threeLittlePigs;
-  bool bigBadWolfPresent;
-  bool bigBadWolfHunted;
+void main(void); /* valid prototype */
 
-  threeLittlePigs = 3;
-  bigBadWolfHunted = false;
-  while (threeLittlePigs > 0 && bigBadWolfHunted == false) {
-    bigBadWolfPresent = randomBool();
-    /* Forgot the ')' here -> will lead to an error that's recovered from */
-    bigBadWolfHunted = randomIntWithMax(10;
-    if (bigBadWolfHunted <= 2) {
-      bigBadWolfHunted = true;
-    }
-    else {
-      if (bigBadWolfPresent) {
-        /* Indicate that one of the three little piggies got ate :( */
-        output(-1);
-        threeLittlePigs = threelittlePigs - 1;
-      }
-    }
-  }
-  output(threeLittlePigs);
+int foo( void ) {
+  return 4;
 }
+
+/* invalid redeclaration */
+int foo ( void ) {
+  return 5;
+} 
+
+int foobar( bool x );
+
+/* conflicting prototype and declaration */
+int foobar ( int x ) {
+  return x;
+} 
+
+void main(void) {
+  int x;
+
+  /* call undefined function */
+  x = bar();
+}
+

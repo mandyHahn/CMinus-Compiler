@@ -1,19 +1,25 @@
-/* Expected errors: 
-  line 9 -> can't name a variable bool "invalid declaration"
-  line 13 -> "invalidtype" is not a valid type "invalid type specifier"
-  line 15 -> "true" isn't a valid variable name "invalid declaration" 
+/* This file demonstrates some variable level declaration errors
+Expected errors:
+  1. (line 15) variable redeclaration in same scope
+  2. (line 18) undefined variable (y)
+  3. (line 20) invalid function call (wrong parameter type, bool instead of int) 
 */
-int a;
-int b;
-/* can't do this */
-bool bool;
 
-int c;
+bool foo( int v ) {
+  return true;
+}
 
-invalidtype d;
+void main( void ) {
+  int var;
+  int x;
+  bool x;   /* invalid redeclaration */
 
-bool true;
+  /* y is not declared */
+  if (var == y) {
+    bool var;
+    var = foo( var ); /* uses the local bool var not int var from main (invalid call) */
+    return;
+  }
 
-int main(void) {
-  return 0;
+  return;
 }

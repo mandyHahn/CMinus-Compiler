@@ -1,119 +1,202 @@
-/* 
-  A bunch of errors:
-    1. (line 26) bool x = 10 -> No semicolon (expects bool x; not =)
-    2. (line 28) c; on its own line -> Invalid type (expects declaration to start with type, not ID(c))
-    3. (line 32) bar(void) -> Invalid type (expects declaration to start with type, not ID(bar))
-    4. (line 36) int 5var -> Invalid type (not the best error message but catches errors relating to the tokens before a variable ID, in this case "5")
-    5. (line 41) while x > 0 -> Invalid statement (missing brackets)
-        5-1: Leads to another error on the same line, as well as one on line 42, since { and } are not a valid characters for statements
-    6. (line 51) return (a + b -> Unmatched (
-    7. (line 55) void brokenFunction(int a, b) -> Invalid type -- no type on "b", but there is a type on "a"
-    8. (line 57) x = x * ; -> Invalid statement (missing RHS of statement) 
-    9. (line 64) int x = 5 -> Missing semicolon -- can't assign on the same line as a declaration (expects ; instead of =)
-    10. (line 63) int no_void() -> Empty parameter list -- no "void" inside function for no args
-    11. (line 70) return 10 = 5; -> Invalid statement -- Can't assign a number to a number
-    12. (line 75) return + 10 ; -> Invalid statement -- Nothing on LHS (similar to 11)
-    13. (line 80) return foo(1, 2,); -> Invalid argument (dangling comma, expects another argument instead of RPAREN)
-    14. (line 85) while ((3 + 7 > x) -> Unmatched ( 
-    15. (line 92) if (x < (y + 2) -> Unmatched ( 
-    16. (line 98) int badParams(int as@ed) -> Invalid type (not the best error message but catches errors relating to the tokens before a variable ID, in this case "@") 
-    17. (line 103) int moreBadParams(int 3 + 4) -> Invalid function parameters (can only have IDs as parameter names) 
-    18. (line 109) int foo(x) -> Invalid type (expects declaration to start with type, not ID(x))
-    19. (line 114) if x < 10 -> Invalid statement (a bracket needs to follow "if", x follows instead, thus invalid)
-    20. (line 115) x < 10 return 1 -> Invalid statement (without a seperator ) or ;, treated as one statement on two lines. "return" is not a valid operator)    
+/* This file attempts to provide a test of all error conditions that have been for
+Expected errors:
+  1.	(line 46)  double prototype declaration
+  2.	(line 50)  double function declaration (matching parameters)
+  3.	(line 54)  mismatched function prototype and declaration (parameters)
+  4.	(line 58)  mismatched function prototype and declaration (return type)
+  5.	(line 62)  prototype after body declaration
+  6.	(line 65)  no return for non-void function (at top scope)
+  7.	(line 71)  undefinied function
+  8.	(line 74)  invalid call (not matching parameter types)
+  9.	(line 77)  invalid call (too many parameters)
+  10.	(line 80)  invalid call (array as non-array parameter)
+  11.	(line 90)  double variable declaration (same type)
+  12.	(line 94)  double variable declaration (conflicting types)
+  13.	(line 97)  bad variable declaration (void)
+  14.	(line 100)  bad array declaration (void)
+  15.	(line 103)  undefined variable
+  16.	(line 106)  undefined array 
+  17.	(line 109)  invalid variable assignment (conflicting types)
+  18.	(line 112)  invalid array assignment (not accessing an index)
+  19.	(line 115)  invalid array assignment (bool index)
+  20.	(line 118)  invalid array assignment (void index)
+  21.	(line 125)  invalid type on left side of arithmetic operator
+  22.	(line 128)  invalid type on right side of arithmetic operator
+  23.	(line 131)  invalid type on right side of UMINUS
+  24.	(line 134)  invalid type on left side of relational operator
+  25.	(line 137)  invalid type on right side of relational operator
+  26.	(line 140)  invalid type on left side of boolean operator
+  27.	(line 143)  invalid type on right side of boolean operator
+  28.	(line 146)  invalid type on right side of NOT
+  29.	(line 149)  using an array as an operand
+  30.	(line 156)  trying to assign a variable declared in an exited scope
+  31.	(line 159)  using an array as a test condition for if
+  32.	(line 162)  using an array as a test condition for while
+  33.	(line 171)  invalid test condition for if (bad type)
+  34.	(line 180)  invalid test condition for while (bad type)
+  35.	(line 183)  invalid return type (mismatched types void --> int)
+  36.	(line 188)  invalid return type (mismatched types int --> bool)
+  37.	(line 199)  invalid return type (returning an array)
+  38.	(line 196)  main is not last function
+
 */
 
-bool x = 10
-int y[5];
-c;
-int d;
+/* double prototype declaration */
+void invalid(void);
+void invalid(void);
 
-/* missing type specifier */
-bar(void);
+/* double function declaration (matching parameters) */
+void invalid2(void) { }
+void invalid2(void) { }
 
-/* short valid function to help sync up the compiler */
-int test(void) {
-    int 5var;
-    y[2]  = 3; 
+/* mismatched function prototype and declaration (parameters) */
+void mismatch( int a );
+void mismatch( bool a ) { }
+
+/* mismatched function prototype and declaration (return type) */
+int mismatch2( void );
+void mismatch2( void ) { }
+
+/* prototype after body declaration */
+void badFunc( void ) { }
+void badFunc( void );
+
+/* no return for non-void function (at top scope) */
+int noReturn( bool a ) { }
+
+int validFunc( int inArr[] ) {
+  bool arr[10];
+
+  /* undefinied function */
+  undefined();
+
+  /* invalid call (not matching parameter types) */
+  noReturn( badFunc() );  /* trying to pass void into a bool */
+
+  /* invalid call (too many parameters) */
+  noReturn( arr[4], false );
+
+  /* invalid call (array as non-array parameter) */
+  noReturn(arr);
+
+  return 4;
 }
 
-int main(void) {
-    while x > 0 { 
-        x = x - 1 
-    }
-    if (y == 2)
+void main(void) {
+  int arr[10];
+  
+  /* double variable declaration (same type) */
+  int a;
+  int a;
 
-    return 1;
+  /* double variable declaration (conflicting types) */
+  int b;
+  bool b;
+
+  /* bad variable declaration (void) */
+  void v;
+  
+  /* bad array declaration (void) */
+  void vArr[10];
+
+  /* undefined variable */
+  a = z;
+  
+  /* undefined array  */
+  a = notAnArr[0];
+
+  /* invalid variable assignment (conflicting types) */
+  a = 5 < 10 + 3 || true;
+
+  /* invalid array assignment (not accessing an index) */
+  arr = 3;
+  
+  /* invalid array assignment (bool index) */
+  arr[false] = 4;
+
+  /* invalid array assignment (void index) */
+  arr[badFunc()] = 5;
+
+  {
+    int x;
+    bool y;
+
+    /* invalid type on left side of arithmetic operator */
+    a = y + x;
+
+    /* invalid type on right side of arithmetic operator */
+    a = 123 * true;
+
+    /* invalid type on right side of UMINUS */
+    a = -y;
+
+    /* invalid type on left side of relational operator */
+    y = badFunc() < 20;
+    
+    /* invalid type on right side of relational operator */
+    y = x < true;
+
+    /* invalid type on left side of boolean operator */
+    y = badFunc() || 3 || false;
+
+    /* invalid type on right side of boolean operator */
+    y = x != badFunc();
+  
+    /* invalid type on right side of NOT */
+    y = ~ badFunc();
+    
+    /* using an array as an operand */
+    x = arr + 2;
+
+    /* long complicated expression, should be fully valid */
+    y = ~true || 23 / 32 + x >= x && -3 + 5; 
+  }
+
+  /* trying to assign a variable declared in an exited scope */
+  x = 5;
+
+  /* using an array as a test condition for if */
+  if (arr) return;
+
+  /* using an array as a test condition for while */
+  while (arr) a = a + 1;
+
+  /* valid */
+  if (a + 20 * 3) return;
+
+  /* valid */
+  if (false) return;
+
+  /* invalid test condition for if (bad type) */
+  if (badFunc()) return;
+
+  /* valid */
+  while (231) return;
+
+  /* valid */
+  while (a < 230 && false) return;
+
+  /* invalid test condition for while (bad type) */
+  while( badFunc() ) return;
+
+  /* invalid return type (mismatched types void --> int) */
+  return a;
 }
 
-int missingCloseBracet(int a, int b) {
-    /* Unmapped ) in expression error */
-    return (a + b;
+int randFunc(void) {
+  /* invalid return type (mismatched types int --> bool) */
+  return true;
 }
 
-/* Forgot int for the one parameter here */
-void brokenFunction(int a, b) {
-    if (a > 0) { 
-        x = x * ;
-    }
-    return;
+bool randFunc2(void) {
+  /* valid */
+  return 12;
 }
 
-/* No void statement here */
-int no_void() { 
-    int x = 5
-    return x;
+int randFunc3(void) {
+  int arr[20];
+  /* invalid return type (returning an array) */
+  return arr;
 }
 
-/* Not a valid assignment */
-bool invalidAssignment(void) {
-    return 10 = 5;
-}
-
-/* No LHS on operator */
-int missingOperator(void) {
-    return + 10;
-}
-
-/* We're not calling this function good */
-int incorrectCall(void) {
-    return foo(1, 2,);
-}
-
-/* While statement is missing a bracket */
-int missingBracketsWhile(void) {
-    while ((3 + 7 > x) {
-        doStuff();
-    }
-}
-
-/* If statement is missing a bracket */
-int missingBracketsIf(void) {
-    if (x < (y + 2) {
-        doStuff();
-    }
-}
-
-/* Invalid character in a parameter */
-int badParams(int as@ed) {
-    return 0;
-}
-
-/* Can't have non ID's in function parameters */
-int moreBadParams(int 3 + 4) {
-    return 0;
-}
-
-/* Will appear in the AST, but not nicely and with errors */
-/* Need types in function header */
-int foo(x) { 
-    /* Invalid == */
-    bool a;
-    bool b;
-    a == true;
-    if x < 10
-        return 1 
-    else {
-      return 0;
-    }
-}
+/* main is not last function */
