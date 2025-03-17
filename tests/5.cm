@@ -37,7 +37,7 @@ Expected errors:
   35.	(line 183)  invalid return type (mismatched types void --> int)
   36.	(line 188)  invalid return type (mismatched types int --> bool)
   37.	(line 199)  invalid return type (returning an array)
-  38.	(line 196)  main is not last function
+  38.	(no line)  Function main does not exist in scope
 
 */
 
@@ -82,7 +82,7 @@ int validFunc( int inArr[] ) {
   return 4;
 }
 
-void main(void) {
+void notMain(void) {
   int arr[10];
   
   /* double variable declaration (same type) */
@@ -134,13 +134,13 @@ void main(void) {
     y = badFunc() < 20;
     
     /* invalid type on right side of relational operator */
-    y = x < true;
+    y = x >= true;
 
     /* invalid type on left side of boolean operator */
     y = badFunc() || 3 || false;
 
     /* invalid type on right side of boolean operator */
-    y = x != badFunc();
+    y = x && badFunc();
   
     /* invalid type on right side of NOT */
     y = ~ badFunc();
@@ -199,4 +199,6 @@ int randFunc3(void) {
   return arr;
 }
 
-/* main is not last function */
+
+/* Function main does not exist in scope */
+int main; /* not a function declaration, won't count */

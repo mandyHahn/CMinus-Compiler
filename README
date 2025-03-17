@@ -3,7 +3,22 @@ Group Members:
 Nicholas Waller (nwaller@uoguelph.ca)
 Amanda Hahn (ahahn01@uoguelph.ca)
 
-Note: All implementations within the assignment are based on the 
+
+# Running the Program
+While on the linux.socs.uoguelph.ca servers, type `make` into the console, which will compile the code as necessary for execution.
+
+### For syntactic analysis:
+- To test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
+- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -a {TEST_FILE_DIR}`
+- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.abs`
+
+### For semantic analysis:
+- Use the commands above, but replace -a with -s
+- For example, to test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -s tests/1.cm`
+- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -s {TEST_FILE_LOCATION}`
+- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.sym`
+  - For tests/1.cm, a file will be created in the `tests` directory called `1.sym`
+
 
 # Testing and Explanation
 Running the program is simple. 
@@ -24,18 +39,3 @@ For example, our program handles errors including but not limited to:
 - Variable not defined
 - void arrays
 For more examples of errors that can be handled, please review `2.cm`, `3.cm`, `4.cm` and `5.cm` in the `tests` directory. 
-
-# Running the Program
-While on the linux.socs.uoguelph.ca servers, type `make` into the console, which will compile the code as necessary for execution.
-
-### For syntactic analysis:
-- To test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
-- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -a {TEST_FILE_DIR}`
-- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.abs`
-
-### For semantic analysis:
-- Use the commands above, but replace -a with -s
-- For example, to test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -s tests/1.cm`
-- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -s {TEST_FILE_LOCATION}`
-- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.sym`
-  - For tests/1.cm, a file will be created in the `tests` directory called `1.sym`

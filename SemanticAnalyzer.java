@@ -144,7 +144,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
   // Can be made public later if needed elsewhere
   private void reportError(Absyn node, String reason, String message) { 
-    if (node.row >= 0 && node.col >= 0) {
+    if (node != null && node.row >= 0 && node.col >= 0) {
       String errorHeader = "Error on line " + (node.row + 1) + ", column " + (node.col + 1) + ": " + reason + "\n"; 
       System.err.println(errorHeader + message + "\n");
     } else {
@@ -394,6 +394,8 @@ Dec getFromTable(String name) {
       case OpExp.GT:
       case OpExp.LE:
       case OpExp.GE:
+      case OpExp.EQ:
+      case OpExp.NE:
         if( !isInteger(exp.left) ) {
           reportError(exp.left, "Invalid operand", "Left operand is type " + exp.left.dtype.type() + " where int is expected");
         }
@@ -406,8 +408,6 @@ Dec getFromTable(String name) {
         
         
       // boolean operators
-      case OpExp.EQ:
-      case OpExp.NE:
       case OpExp.AND:
       case OpExp.OR:
         if( !isBoolean(exp.left) ) {
@@ -584,12 +584,15 @@ Dec getFromTable(String name) {
       if (exp.tail == null) {
         // check to make sure the last thing declaired
         // TODO: is it last function? Or last thing declared? that must be main
-        if (!(exp.head instanceof FunctionDec) || !((FunctionDec)exp.head).func.equals("main")) {
-          reportError(exp.head, "Invalid main", "Last global declaration must be main.");
-        }
       }
 
       exp = exp.tail;
+    }
+
+    Dec main = getFromTable("main");
+    if (main == null || !(main instanceof FunctionDec)) {
+      // just using a dummyInt to print 0 0 line and col
+      reportError(null, "Missing main", "Function \"main\" must be declared in the global scope.");
     }
 
     deleteSymbolTableLevelAndPrint(level+1);
@@ -618,8 +621,6 @@ Dec getFromTable(String name) {
         reportError(exp, "Function missing return", "Function \"" + exp.func + "\" is non-void, and so must have a return statement at it's top level scope.");
       }
     }
-
-
   }
 
   @Override
