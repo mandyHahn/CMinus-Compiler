@@ -338,11 +338,11 @@ Dec getFromTable(String name) {
   public void visit(IfExp exp, int level) {
     exp.test.accept(this, level); // nothing should be declared or added to symbol table here
 
-    scopeType.push(IF);
+    if (exp.thenpart instanceof CompoundExp) { scopeType.push(IF); }
     exp.thenpart.accept(this, level);
     
     if (exp.elsepart != null && !(exp.elsepart instanceof NilExp) ) {
-      scopeType.push(ELSE);
+      if (exp.elsepart instanceof CompoundExp) { scopeType.push(ELSE); }
       exp.elsepart.accept(this, level);      
     }
 
@@ -361,14 +361,6 @@ Dec getFromTable(String name) {
     if (exp.left != null)
       exp.left.accept(this, level);
     exp.right.accept(this, level);
-
-    // if (exp.left != null && exp.left.dtype instanceof ArrayDec) {
-    //   reportError(exp.left, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.left.dtype).name + "\" as variable");
-    // }
-    
-    // if (exp.right.dtype instanceof ArrayDec) {
-    //   reportError(exp.right, "Invalid operand", "Cannot use array \"" + ((ArrayDec)exp.right.dtype).name + "\" as variable");
-    // }
 
     switch( exp.op ) {
       // arithmetic operators
@@ -660,7 +652,7 @@ Dec getFromTable(String name) {
 
   @Override
   public void visit(WhileExp exp, int level) {
-    scopeType.push(WHILE);
+    if (exp.body instanceof CompoundExp) { scopeType.push(WHILE); }
     exp.test.accept(this, level);
     exp.body.accept(this, level);
 
