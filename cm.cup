@@ -13,7 +13,7 @@ import absyn.*;
 /* Parser code to change the way the parser reports errors (include
   line and column number of the error). */
 parser code {:
-  public static isValid = true;
+  public static boolean isValid = true;
 
   public void report_reason(String message) {
     StringBuffer m = new StringBuffer("Reason");

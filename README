@@ -1,20 +1,41 @@
-## CIS*4650 Milestone 1
+## CIS*4650 Milestone 2
 Group Members:
 Nicholas Waller (nwaller@uoguelph.ca)
 Amanda Hahn (ahahn01@uoguelph.ca)
 
-Note: Scanner and Parser based on given SampleParser implementation
+Note: All implementations within the assignment are based on the 
 
-# Building and Running/Testing
+# Testing and Explanation
 Running the program is simple. 
 
 All tests are in the directory "tests", including the mandatory `1.cm`, `2.cm`, ... required for the assignment. 
 
-While on the linux.socs.uoguelph.ca servers, type `make` into the console. 
-To run the scanner for 1.cm:
-- Run `java -cp /usr/share/java/cup.jar:. Scanner < tests/1.cm`
-To run the parser for 1.cm:
-- Run `java -cp /usr/share/java/cup.jar:. CM tests/1.cm`
+Modifications have been made since checkpoint 1 that make it so there is now a fully fleshed out CM class that is run off of command line arguments, which outputs the .abs file or .sym file, depending on the command-line argument provided, as described in the assignment description. 
+When running our CM class with -a, it will produce a .abs file, which is the tree representation of the abstract syntax tree for the program, while running with -s will produce the .sym file, which is a visual representation of our symbol table and scoping done for Milestone 2. 
 
-By default, the AST will be printed to the terminal stdout. By adding the `-a` flag onto the command to run the parser, you can make a .abs file. 
-For example, `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
+As of right now, our program will run through the syntactic analyzer and check if anything failed. If anything fails at the step of syntactic analysis, the program will terminate. The program will then run through our SemanticAnalyzer and will report problems for many different problems, if present. 
+
+For example, our program handles errors including but not limited to:
+- Return types of invalid types
+- Missing return for non-void function
+- Function body already defined
+- Different function headers (prototype vs prototype, prototype vs definition)
+- Invalid test conditions (e.g. `if (1)`) 
+- Variable not defined
+- void arrays
+For more examples of errors that can be handled, please review `2.cm`, `3.cm`, `4.cm` and `5.cm` in the `tests` directory. 
+
+# Running the Program
+While on the linux.socs.uoguelph.ca servers, type `make` into the console, which will compile the code as necessary for execution.
+
+### For syntactic analysis:
+- To test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
+- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -a {TEST_FILE_DIR}`
+- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.abs`
+
+### For semantic analysis:
+- Use the commands above, but replace -a with -s
+- For example, to test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -s tests/1.cm`
+- To test any file generically, run `java -cp /usr/share/java/cup.jar:. CM -s {TEST_FILE_LOCATION}`
+- This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.sym`
+  - For tests/1.cm, a file will be created in the `tests` directory called `1.sym`
