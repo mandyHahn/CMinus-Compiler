@@ -325,13 +325,8 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(CallExp exp, int offset, boolean flag) {
-		// set up frame offset for the calling function
-		// int oldFrameOffset = frameOffset;
-		// frameOffset = initFO;
 
 		int localOffset = initFO;
-		// System.out.println(oldFrameOffset  + " " + frameOffset + " " + offset);
-
 		emitComment("start calling procedure for " + exp.func);
 
 		if (exp.args != null) {
@@ -360,7 +355,6 @@ public class CodeGenerator implements AbsynVisitor {
 
 		if (exp.func.equals("output")) {
 			funcAddr = outputEntry;
-			// System.out.println("output: " + outputEntry);
 		}
 		else if (exp.func.equals("input")) {
 			funcAddr = inputEntry;
@@ -371,16 +365,12 @@ public class CodeGenerator implements AbsynVisitor {
 			int bLoc = emitSkip(1);
 			emitComment("skipping jump to function " + exp.func + " (not yet defined)");
 			exp.reference.backpatchLocs.add(bLoc);
-			// System.out.println("test " + exp.reference.backpatchLocs.size());
 		} else {
 			emitRM_Abs("LDA", pc, funcAddr, "jump to function entry");
 		}
 
 		// This runs after returning from function
 		emitRM("LD", fp, ofpFO, fp, "pop the called functions frame");
-
-		// restore the caller's frame offset
-		// frameOffset = oldFrameOffset;
 
 		// if non-void, save return value to caller's frame
 		if ( exp.reference.result.typ != NameTy.VOID ) {
@@ -442,8 +432,6 @@ public class CodeGenerator implements AbsynVisitor {
 
 			exp = exp.tail;
 		}
-
-		// System.out.println("globaloffset: " + globalOffset);
 	}
 
 
@@ -461,7 +449,6 @@ public class CodeGenerator implements AbsynVisitor {
 			return;
 		}	
 
-		// I don't know if this is needed
 		int oldFrameOffset = frameOffset;
 		frameOffset = initFO;
 
@@ -472,7 +459,6 @@ public class CodeGenerator implements AbsynVisitor {
 		}
 		
 		exp.funAddr.set(emitLoc);
-		// System.out.println(exp.backpatchLocs.size());
 
 		for (int loc : exp.backpatchLocs) {
 			int savedLoc = emitSkip(0);
@@ -483,8 +469,9 @@ public class CodeGenerator implements AbsynVisitor {
 		
 		emitRM("ST", ac, retFO, fp, "store return");
 
-		// // shouldn't need either of these, result isn't relevant and params were pushed by caller
+		// shouldn't need this, result isn't relevant
 		// exp.result.accept(this, offset, flag);
+		
 		if (exp.params != null) {
 			exp.params.accept(this, frameOffset, flag); 
 		}
@@ -569,12 +556,42 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(IfExp exp, int offset, boolean flag) {
+		// this shouldn't be *too* bad so lmk if you're confused
+		// theoreticaly: 
+		//	- visit the test, passing in offset --> result of test should be stored in offset (or maybe ac)
+		//  - store the result of the test in ac
+		//	- store the location for backpatching -- "savedLoc1" (we don't know how long the "then" 
+		//      part of the if will be, so we don't know where to jump ahead to, so we need backpatching)		
+		//  - visit the "then" part of the if statement
+		//  - IF THERES AN ELSE BLOCK: store the location for backpatching again -- "savedLoc2" 
+		//      (for jumping past the else block after the "then" block evaluates)
+		//  - perform the backpatching for savedLoc1 --> use JNE with ac to jump to the current instruction if the test is false (zero)
+		//  - IF THERES AN ELSE BLOCK: visit the "else" part of the if statement
+		//  - IF THERES AN ELSE BLOCK: perform the backpatching for savedLoc2 --> use LDA to perform an unconditional 
+		//      jump past the else block (to the current instruction)
+
+		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
+		// as always ask if this is unclear
+
 		// NICK TODO: Auto-generated method stub
 		throw new UnsupportedOperationException("Unimplemented method 'visit'");
 	}
 
 	@Override
 	public void visit(WhileExp exp, int offset, boolean flag) {
+		// theoretically, this is similar to the if statement but jumping differently
+		// this is rough and done quick with "what I think the steps will be", might deviate slightly in practice but it should be 90% good
+		//  - on entry, store the current emitLoc (probably, it might be a different value) "jmpLoc"
+		//  - visit the test, passing in offset --> result of test should be stored in offset (or maybe ac)
+		//  - store the result of the test in ac
+		//  - store the location for backpatching -- "savedLoc" (we don't know low long the body will be to jump past it on false)
+		//  - visit the body
+		//	- add an unconditional jump (using LDA) to jump back to "jmpLoc" 
+		//  - perform backpatching for savedLoc --> use JNE with ac to jump to the current instruction if the test is false (zero)
+
+		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
+		// as always ask if this is unclear
+
 		// NICK TODO: Auto-generated method stub
 		throw new UnsupportedOperationException("Unimplemented method 'visit'");
 	}
@@ -582,7 +599,10 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(NilExp exp, int offset, boolean flag) {
-		// NICK TODO: Auto-generated method stub
+		// should this do anything??? I think I've coded things such that it is never called
+		// leaving it as a todo / exception until we know for sure
+
+		// TODO: Auto-generated method stub
 		throw new UnsupportedOperationException("Unimplemented method 'visit'");
 	}
 
