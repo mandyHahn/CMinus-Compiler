@@ -2,6 +2,7 @@
 *.class
 *.abs
 *.sym
+*.tm
 sym.java
 Lexer.java
 parser.java

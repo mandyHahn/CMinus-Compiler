@@ -79,20 +79,30 @@ class CM {
       if (OUTPUT_ABS && result != null) {
         System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".abs"), true));
         AbsynVisitor visitor = new ShowTreeVisitor();
-        result.accept(visitor, 0); 
+        result.accept(visitor, 0, false); 
         System.setOut(originalOut);
       }
 
-      if (OUTPUT_SYM && result != null && parser.isValid) {
+      if (!parser.isValid) {
+        return;
+      }
+
+      if (OUTPUT_SYM && result != null) {
         System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".sym"), true));
-        AbsynVisitor visitor = new SemanticAnalyzer();
-        result.accept(visitor, 0); 
+        SemanticAnalyzer smVisitor = new SemanticAnalyzer();
+        result.accept(smVisitor, 0, false); 
         System.setOut(originalOut);
       }
+
+      if (!SemanticAnalyzer.isValid) {
+        return;
+      }
       
-      // TODO: implement for C3
-      if (OUTPUT_TM) {
-        System.out.println("-c not yet implemented");
+      if (OUTPUT_TM && result != null) {
+        System.setOut(new PrintStream(new FileOutputStream(fileNameBase + ".tm"), true));
+        CodeGenerator cgVisitor = new CodeGenerator();
+        cgVisitor.visit(result);
+        System.setOut(originalOut);
       }
 
     } catch (Exception e) {

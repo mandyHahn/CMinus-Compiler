@@ -5,6 +5,7 @@ import java.util.Stack;
 import absyn.*;
 
 public class SemanticAnalyzer implements AbsynVisitor {
+  public static boolean isValid = true;
 
   private class NodeType {
     public String name;
@@ -147,6 +148,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
   // Can be made public later if needed elsewhere
   private void reportError(Absyn node, String reason, String message) {
+    SemanticAnalyzer.isValid = false;
     if (node != null && node.row >= 0 && node.col >= 0) {
       String errorHeader = "Error on line " + (node.row + 1) + ", column " + (node.col + 1) + ": " + reason + "\n";
       System.err.println(errorHeader + message + "\n");
@@ -223,6 +225,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
       // just add the body to the old one
       if ((existingFunction.body instanceof NilExp) && !(function.body instanceof NilExp)) {
         existingFunction.body = function.body;
+        existingFunction.params = function.params;
+        existingFunction.funAddr = function.funAddr;
         return true;
       }
       // otherwise if we're redeclaring the body, throw specific error
@@ -310,16 +314,16 @@ public class SemanticAnalyzer implements AbsynVisitor {
    * BEGIN VISITOR VISIT FUNCTION IMPLEMENTATIONS
    * ------------------------------------------------
    */
-  public void visit(ExpList expList, int level) {
+  public void visit(ExpList expList, int level, boolean flag) {
     while (expList != null) {
-      expList.head.accept(this, level);
+      expList.head.accept(this, level, flag);
       expList = expList.tail;
     }
   }
 
-  public void visit(AssignExp exp, int level) {
-    exp.lhs.accept(this, level);
-    exp.rhs.accept(this, level);
+  public void visit(AssignExp exp, int level, boolean flag) {
+    exp.lhs.accept(this, level, flag);
+    exp.rhs.accept(this, level, flag);
 
     if (exp.lhs.dtype instanceof ArrayDec) {
       reportError(exp, "Invalid assignment", "Cannot assign an expression to an array");
@@ -338,19 +342,19 @@ public class SemanticAnalyzer implements AbsynVisitor {
     exp.dtype = exp.lhs.dtype;
   }
 
-  public void visit(IfExp exp, int level) {
-    exp.test.accept(this, level); // nothing should be declared or added to symbol table here
+  public void visit(IfExp exp, int level, boolean flag) {
+    exp.test.accept(this, level, flag); // nothing should be declared or added to symbol table here
 
     if (exp.thenpart instanceof CompoundExp) {
       scopeType.push(IF);
     }
-    exp.thenpart.accept(this, level);
+    exp.thenpart.accept(this, level, flag);
 
     if (exp.elsepart != null && !(exp.elsepart instanceof NilExp)) {
       if (exp.elsepart instanceof CompoundExp) {
         scopeType.push(ELSE);
       }
-      exp.elsepart.accept(this, level);
+      exp.elsepart.accept(this, level, flag);
     }
 
     // isBoolean checks if integer or boolean (it is subset of bool)
@@ -361,14 +365,14 @@ public class SemanticAnalyzer implements AbsynVisitor {
     exp.dtype = exp.test.dtype; // is this even needed?
   }
 
-  public void visit(IntExp exp, int level) {
+  public void visit(IntExp exp, int level, boolean flag) {
     exp.dtype = dummyInt;
   }
 
-  public void visit(OpExp exp, int level) {
+  public void visit(OpExp exp, int level, boolean flag) {
     if (exp.left != null)
-      exp.left.accept(this, level);
-    exp.right.accept(this, level);
+      exp.left.accept(this, level, flag);
+    exp.right.accept(this, level, flag);
 
     switch (exp.op) {
       // arithmetic operators
@@ -429,8 +433,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
     }
   }
 
-  public void visit(ReturnExp exp, int level) {
-    exp.exp.accept(this, level);
+  public void visit(ReturnExp exp, int level, boolean flag) {
+    exp.exp.accept(this, level, flag);
 
     if (level == currentFuncScope) {
       hasReturn = true;
@@ -447,8 +451,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
     exp.dtype = (isInteger(currentFunction) ? dummyInt : dummyBool);
   }
 
-  public void visit(VarExp exp, int level) {
-    exp.variable.accept(this, level);
+  public void visit(VarExp exp, int level, boolean flag) {
+    exp.variable.accept(this, level, flag);
     String name = (exp.variable instanceof IndexVar) ? ((IndexVar) exp.variable).name : ((SimpleVar) exp.variable).name;
 
     Dec type = getFromTable(name);
@@ -480,27 +484,29 @@ public class SemanticAnalyzer implements AbsynVisitor {
     } else {
       exp.dtype = dummyBool;
     }
+
+    exp.reference = type;
   }
 
   @Override
-  public void visit(BoolExp exp, int level) {
+  public void visit(BoolExp exp, int level, boolean flag) {
     exp.dtype = dummyBool;
   }
 
   @Override
-  public void visit(ArrayDec exp, int level) {
+  public void visit(ArrayDec exp, int level, boolean flag) {
     if (exp.typ.typ == NameTy.VOID) {
       reportError(exp, "Invalid declaration", "Array " + exp.name + " cannot be of type void[]. Changing to int[].");
       exp.typ.typ = NameTy.INT;
     }
     prependToSymbolTable(exp.name, exp, level);
-    exp.typ.accept(this, level);
+    exp.typ.accept(this, level, flag);
   }
 
   @Override
-  public void visit(CallExp exp, int level) {
+  public void visit(CallExp exp, int level, boolean flag) {
     if (exp.args != null) {
-      exp.args.accept(this, level);
+      exp.args.accept(this, level, flag);
     }
 
     Dec type = getFromTable(exp.func);
@@ -544,6 +550,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
         reportError(exp, "Conflicting argument count", "Call expression for \"" + function.func +
             "\" does not have the correct number of arguments.");
       }
+
+      exp.reference = function;
     }
 
     if (isInteger(type)) {
@@ -557,7 +565,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(CompoundExp exp, int level) {
+  public void visit(CompoundExp exp, int level, boolean flag) {
     // System.err.println("ENTER " + scopeType.size() + " level: " + level + " type:
     // " + scopeType);
 
@@ -567,10 +575,10 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
     printAtLevel(getScopeString("Entering"), level);
     if (exp.decs != null) {
-      exp.decs.accept(this, level + 1);
+      exp.decs.accept(this, level + 1, flag);
     }
     if (exp.exps != null) {
-      exp.exps.accept(this, level + 1);
+      exp.exps.accept(this, level + 1, flag);
     }
     // System.err.println("EXIT " + scopeType.size() + " level: " + level + " type:
     // " + scopeType);
@@ -581,16 +589,10 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(DecList exp, int level) {
+  public void visit(DecList exp, int level, boolean flag) {
     printAtLevel("Entering the global scope", level);
     while (exp != null) {
-      exp.head.accept(this, level + 1);
-
-      if (exp.tail == null) {
-        // check to make sure the last thing declaired
-        // TODO: is it last function? Or last thing declared? that must be main
-      }
-
+      exp.head.accept(this, level + 1, flag);
       exp = exp.tail;
     }
 
@@ -605,7 +607,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(FunctionDec exp, int level) {
+  public void visit(FunctionDec exp, int level, boolean flag) {
     boolean success = addFunctionToSymbolTable(exp, level);
 
     // TODO: remove NilExp check if scope messages shouold be output for prototypes
@@ -615,11 +617,11 @@ public class SemanticAnalyzer implements AbsynVisitor {
       currentFuncScope = level + 1;
       scopeType.push(FUNCTION);
 
-      exp.result.accept(this, level);
+      exp.result.accept(this, level, flag);
       if (exp.params != null) {
-        exp.params.accept(this, level + 1); // need to set level to one deeper for params
+        exp.params.accept(this, level + 1, flag); // need to set level to one deeper for params
       }
-      exp.body.accept(this, level);
+      exp.body.accept(this, level, flag);
 
       // if there is no return and the function is of return type bool or int
       if (hasReturn == false && isBoolean(exp)) {
@@ -630,8 +632,8 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(IndexVar exp, int level) {
-    exp.index.accept(this, level);
+  public void visit(IndexVar exp, int level, boolean flag) {
+    exp.index.accept(this, level, flag);
 
     if (!isInteger(exp.index)) {
       reportError(exp, "Invalid index", "Index type is " + exp.index.dtype.type() + " where int is expected");
@@ -639,38 +641,38 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(NameTy exp, int level) {
+  public void visit(NameTy exp, int level, boolean flag) {
   }
 
   @Override
-  public void visit(SimpleDec exp, int level) {
+  public void visit(SimpleDec exp, int level, boolean flag) {
     if (exp.typ.typ == NameTy.VOID) {
       reportError(exp, "Invalid declaration", "Variable " + exp.name + " cannot be of type void. Changing to int.");
       exp.typ.typ = NameTy.INT;
     }
     prependToSymbolTable(exp.name, exp, level);
-    exp.typ.accept(this, level);
+    exp.typ.accept(this, level, flag);
   }
 
   @Override
-  public void visit(SimpleVar exp, int level) {
+  public void visit(SimpleVar exp, int level, boolean flag) {
   }
 
   @Override
-  public void visit(VarDecList exp, int level) {
+  public void visit(VarDecList exp, int level, boolean flag) {
     while (exp != null && exp.head != null) {
-      exp.head.accept(this, level);
+      exp.head.accept(this, level, flag);
       exp = exp.tail;
     }
   }
 
   @Override
-  public void visit(WhileExp exp, int level) {
+  public void visit(WhileExp exp, int level, boolean flag) {
     if (exp.body instanceof CompoundExp) {
       scopeType.push(WHILE);
     }
-    exp.test.accept(this, level);
-    exp.body.accept(this, level);
+    exp.test.accept(this, level, flag);
+    exp.body.accept(this, level, flag);
 
     // isBoolean checks if integer or boolean (it is subset of bool)
     if (!isBoolean(exp.test)) {
@@ -681,7 +683,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
   }
 
   @Override
-  public void visit(NilExp exp, int level) {
+  public void visit(NilExp exp, int level, boolean flag) {
     exp.dtype = dummyVoid;
   }
 

@@ -1,0 +1,596 @@
+import absyn.*;
+
+public class CodeGenerator implements AbsynVisitor {
+	int mainEntry, globalOffset, frameOffset;
+	final int ac = 0;
+	final int ac1 = 1;
+	final int fp = 5;
+	final int gp = 6;
+	final int pc = 7;
+	
+	final int ofpFO = 0;
+	final int retFO = -1;
+	final int initFO = -2;
+
+	int emitLoc, highEmitLoc;
+	int outputEntry, inputEntry;
+
+	// used ONLY for SimpleVar and IndexVar, in order to generate unique behaviour in each visit
+	VarDec reference = null;
+
+	// add constructor and all emitting routines
+	CodeGenerator() { }
+	
+	private void emitRO( String op, int r, int s, int t, String comment ) {
+		System.out.print(String.format("%3d: %5s %d, %d, %d", emitLoc, op, r, s, t));
+		System.out.println("\t" + comment);
+		emitLoc++;
+		if ( highEmitLoc < emitLoc ) {
+			highEmitLoc = emitLoc;
+		}
+	} 
+
+	private void emitRM( String op, int r, int d, int s, String comment ) {
+		System.out.print(String.format("%3d: %5s %d, %d(%d)", emitLoc, op, r, d, s));
+		System.out.println("\t" + comment);
+		emitLoc++;
+		if ( highEmitLoc < emitLoc ) {
+			highEmitLoc = emitLoc;
+		}
+	} 
+
+	private void emitRM_Abs( String op, int r, int a, String comment ) {
+		System.out.print(String.format("%3d: %5s %d, %d(%d)", emitLoc, op, r, a - (emitLoc + 1), pc));
+		System.out.println("\t" + comment);
+		emitLoc++;
+		if ( highEmitLoc < emitLoc ) {
+			highEmitLoc = emitLoc;
+		}
+	} 
+
+	private int emitSkip( int distance ) {
+		int i = emitLoc;
+		emitLoc += distance;
+		if (highEmitLoc < emitLoc ) {
+			highEmitLoc = emitLoc;
+		}
+
+		return i;
+	}
+
+	private void emitComment( String comment ) {
+		System.out.println("* " + comment);
+	}
+
+	private void emitBackup( int loc ) {
+		if (loc > highEmitLoc ) {
+			emitComment( "BUG in emitBackup" );
+		}
+		emitLoc = loc; 
+	}
+
+	private void emitRestore() {
+		emitLoc = highEmitLoc;
+	}
+
+	/*
+		-- RO instructions -- opcode r, s, t
+		HALT 	stop execution
+		IN 		reg[r] <- read an integer from input
+		OUT 	reg[r] -> write to standard output
+		ADD 	reg[r] = reg[s] + reg[t]
+		SUB 	reg[r] = reg[s] - reg[t]
+		MUL 	reg[r] = reg[s] * reg[t]
+		DIV 	reg[r] = reg[s] / reg[t] (may generate ZERO_DIV)
+	
+		-- RM instructions -- opcode r, d(s) -- a = d + reg[s]
+		LD 		reg[r] = dMem[a]
+		LDA 	reg[r] = a
+		LDC 	reg[r] = d
+		ST 		dMem[a] = reg[r]
+		JLT 	if( reg[r] < 0 ) reg[PC_REG] = a
+		JLE 	if( reg[r] <= 0 ) reg[PC_REG] = a
+		JGT 	if( reg[r] > 0 ) reg[PC_REG] = a
+		JGE 	if( reg[r] >= 0 ) reg[PC_REG] = a
+		JEQ 	if( reg[r] == 0 ) reg[PC_REG] = a
+		JNE 	if( reg[r] != 0 ) reg[PC_REG] = a
+	 */
+
+	public void visit(Absyn trees) {
+		// generate prelude
+		emitComment("prelude");
+		emitRM("LD", gp, 0, 0, "load gp with maxaddr");
+		emitRM("LDA", fp, 0, gp, "copy gp to fp");
+		emitRM("ST", ac, 0, 0, "clear content at loc 0");
+
+		// prep backpatching for i/o routines
+		int savedLoc = emitSkip(1);
+
+		// generate i/o routines
+		emitComment("code for input routine");
+		inputEntry = emitLoc;
+		emitRM("ST", ac, retFO, fp, "store return");
+		emitRO("IN", 0, 0, 0, "input");
+		emitRM("LD", pc, retFO, fp, "return to caller");
+
+		emitComment("code for output routine");
+		outputEntry = emitLoc;
+		emitRM("ST", ac, retFO, fp, "store return");
+		emitRM("LD", ac, initFO, fp, "load output value");
+		emitRO("OUT", ac, 0, 0, "output");
+		emitRM("LD", pc, retFO, fp, "return to caller");
+
+		// emit backpatching for i/o routines
+		int savedLoc2 = emitSkip(0);
+		emitBackup(savedLoc);
+		emitRM_Abs("LDA", pc, savedLoc2, "jump around i/o code");
+		emitRestore();
+
+		// make a request to the visit method for DecList
+		emitComment("start code generation");
+		trees.accept(this, 0, false);
+
+		// generate finale
+		emitComment("finale");
+		emitRM("ST", fp, globalOffset + ofpFO, fp, "push ofp");
+		emitRM("LDA", fp, globalOffset, fp, "push frame");
+		emitRM("LDA", ac, 1, pc, "load ac with ret ptr");
+		emitRM_Abs("LDA", pc, mainEntry, "jump to main loc");
+		emitRM("LD", fp, ofpFO, fp, "pop frame");
+		emitRO("HALT", 0, 0, 0, "stop execution");
+	}
+
+
+	///////////////////////////////////
+	// 		START VISIT METHODS		 //
+	///////////////////////////////////
+	
+	@Override
+	public void visit(ExpList expList, int offset, boolean flag) {
+		while (expList != null) {
+			expList.head.accept(this, offset, flag);
+			expList = expList.tail;
+		}
+	}
+
+	@Override
+	public void visit(AssignExp exp, int offset, boolean flag) {
+		exp.lhs.accept(this, offset - 1, true);
+		exp.rhs.accept(this, offset - 2, false);
+
+		emitRM("LD", ac, offset - 1, fp, "load the assignment address into ac");
+		emitRM("LD", ac1, offset - 2, fp, "load the result of the rhs into ac1");
+		emitRM("ST", ac1, 0, ac, "store the value in ac1 in the address in ac");
+		emitRM("ST", ac1, offset, fp, "store the value in ac1 to the local temporary");
+	}
+
+	@Override
+	public void visit(IntExp exp, int offset, boolean flag) {
+		emitRM("LDC", ac, exp.value, 0, "load the literal int in ac");
+		emitRM("ST", ac, offset, fp, "store the literal int from ac into local temporary");
+	}
+
+
+	@Override
+	public void visit(BoolExp exp, int offset, boolean flag) {
+		emitRM("LDC", ac, (exp.value ? 1 : 0), 0, "load the literal bool in ac");
+		emitRM("ST", ac, offset, fp, "store the literal bool from ac into local temporary");
+	}
+
+
+	@Override
+	public void visit(OpExp exp, int offset, boolean flag) {
+		if (exp.left == null || exp.left instanceof NilExp) {
+			// TODO: is this correct?
+			emitComment("no lhs, treat as 0");
+			emitRM("LDC", ac, 0, 0, "load the literal 0 in ac");
+			emitRM("ST", ac, offset, fp, "store the literal int from ac into local temporary");
+		}
+		else {
+			exp.left.accept(this, offset - 1, flag);
+		}
+
+		exp.right.accept(this, offset - 2, flag);
+
+		emitRM("LD", ac, offset - 1, fp, "store lhs in ac");
+		emitRM("LD", ac1, offset - 2, fp, "store rhs in ac1");
+
+		switch (exp.op) {
+			case OpExp.PLUS:
+				emitRO("ADD", ac, ac, ac1, "add ac and ac1, store result in ac");
+				break;
+
+			case OpExp.UMINUS:
+			case OpExp.MINUS:
+				emitRO("SUB", ac, ac, ac1, "subtract ac and ac1, store result in ac");
+				break;
+
+			case OpExp.MUL:
+				emitRO("MUL", ac, ac, ac1, "multiply ac and ac1, store result in ac");
+				break;
+
+			case OpExp.DIV:
+				emitRO("DIV", ac, ac, ac1, "divide ac and ac1, store result in ac");
+				break;
+				
+				
+			// relational operators
+			case OpExp.LT:
+				emitRO("SUB", ac, ac, ac1, "LT: sub ac and ac1 to determine which is larger");
+				emitRM("JGE", ac, 2, pc, "LT: jump to else part if lhs >= rhs");
+
+				// if lhs < rhs
+				emitRM("LDC", ac, 1, 0, "lhs < rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for <");
+				
+				// if lhs >= rhs
+				emitRM("LDC", ac, 0, 0, "lhs < rhs is false, set ac 0");
+				break;
+
+			case OpExp.GT:
+				emitRO("SUB", ac, ac, ac1, "GT: sub ac and ac1 to determine which is larger");
+				emitRM("JLE", ac, 2, pc, "GT: jump to else part if lhs <= rhs");
+
+				// if lhs > rhs
+				emitRM("LDC", ac, 1, 0, "lhs > rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for >");
+				
+				// if lhs <= rhs
+				emitRM("LDC", ac, 0, 0, "lhs > rhs is false, set ac 0");
+				break;
+
+			case OpExp.LE:
+				emitRO("SUB", ac, ac, ac1, "LE: sub ac and ac1 to determine which is larger");
+				emitRM("JGT", ac, 2, pc, "LE: jump to else part if lhs > rhs");
+
+				// if lhs <= rhs
+				emitRM("LDC", ac, 1, 0, "lhs <= rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for <=");
+				
+				// if lhs > rhs
+				emitRM("LDC", ac, 0, 0, "lhs <= rhs is false, set ac 0");
+				break;
+
+			case OpExp.GE:
+				emitRO("SUB", ac, ac, ac1, "GE: sub ac and ac1 to determine which is larger");
+				emitRM("JLT", ac, 2, pc, "GE: jump to else part if lhs < rhs");
+
+				// if lhs >= rhs
+				emitRM("LDC", ac, 1, 0, "lhs >= rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for >=");
+				
+				// if lhs < rhs
+				emitRM("LDC", ac, 0, 0, "lhs >= rhs is false, set ac 0");
+				break;
+
+			case OpExp.EQ:
+				emitRO("SUB", ac, ac, ac1, "EQ: sub ac and ac1 to determine which is larger");
+				emitRM("JNE", ac, 2, pc, "EQ: jump to else part if lhs != rhs");
+
+				// if lhs == rhs
+				emitRM("LDC", ac, 1, 0, "lhs == rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for ==");
+				
+				// if lhs != rhs
+				emitRM("LDC", ac, 0, 0, "lhs == rhs is false, set ac 0");
+				break;
+
+			case OpExp.NE:
+				emitRO("SUB", ac, ac, ac1, "NE: sub ac and ac1 to determine which is larger");
+				emitRM("JEQ", ac, 2, pc, "NE: jump to else part if lhs == rhs");
+
+				// if lhs != rhs
+				emitRM("LDC", ac, 1, 0, "lhs != rhs is true, set ac 1");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for !=");
+				
+				// if lhs == rhs
+				emitRM("LDC", ac, 0, 0, "lhs != rhs is false, set ac 0");
+				break;
+				
+			// TODO: is short circuit necessary?
+			// boolean operators
+			case OpExp.AND:
+				// AND is the same thing as a * b
+				emitRO("MUL", ac, ac, ac1, "AND ac and ac1, store result in ac");
+				break;
+				
+			case OpExp.OR:
+				// OR is the same thing as |a| + |b| (use a^2 and b^2 instead of abs)
+				emitRO("MUL", ac, ac, ac, "square the lhs to ensure positive (OR using add)");
+				emitRO("MUL", ac1, ac1, ac1, "square the rhs to ensure positive (OR using add)");
+				emitRO("ADD", ac, ac, ac1, "OR ac and ac1, store result in ac");
+				break;
+
+			case OpExp.NOT:
+				// Note: the value to NOT is loaded into ac1, and result is expected in ac
+				emitRM("JEQ", ac1, 2, pc, "jump to else if ac1 == 0");
+
+				// if 1, change to 0
+				emitRM("LDC", ac, 0, 0, "then branch: if ac1 != 0, set ac 0");
+				emitRM("LDA", pc, 1, pc, "jump past else branch for NOT operation");
+				
+				// if 0, change to 1
+				emitRM("LDC", ac, 1, 0, "else branch: if ac1 == 0, set ac 1");
+				break;
+		}
+			
+		emitRM("ST", ac, offset, fp, "store result from ac into local temporary");
+	}
+		
+	@Override
+	public void visit(ReturnExp exp, int offset, boolean flag) {
+		exp.exp.accept(this, offset, flag);
+		emitRM("LD", ac, offset, fp, "save return value to ac");
+	}
+
+	@Override
+	public void visit(CallExp exp, int offset, boolean flag) {
+		// set up frame offset for the calling function
+		// int oldFrameOffset = frameOffset;
+		// frameOffset = initFO;
+
+		int localOffset = initFO;
+		// System.out.println(oldFrameOffset  + " " + frameOffset + " " + offset);
+
+		emitComment("start calling procedure for " + exp.func);
+
+		if (exp.args != null) {
+			// instead of calling into ExpList, need custom behaviour???
+			// this seems wrong but I have no clue how to do this otherwise
+			ExpList args = exp.args;
+			
+			while (args != null) {
+				args.head.accept(this, offset + localOffset, flag);
+				args = args.tail;
+
+				// all possible Exp statements here should end with a "result value" in ac
+				// this might not be necessary? 
+				emitRM("ST", ac, offset + localOffset, fp, "store result of parameter from ac into stack");
+
+				localOffset -= 1;
+			}
+		}
+
+				
+		emitRM("ST", fp, offset + ofpFO, fp, "store current fp");
+		emitRM("LDA", fp, offset, fp, "push new frame (update fp to new frame)");
+		emitRM("LDA", ac, 1, pc, "save address to return from function in ac");
+		
+		int funcAddr = exp.reference.funAddr.intValue();
+
+		if (exp.func.equals("output")) {
+			funcAddr = outputEntry;
+			// System.out.println("output: " + outputEntry);
+		}
+		else if (exp.func.equals("input")) {
+			funcAddr = inputEntry;
+		}
+		
+		if (funcAddr == 0) {
+			// if the function hasn't yet been defined
+			int bLoc = emitSkip(1);
+			emitComment("skipping jump to function " + exp.func + " (not yet defined)");
+			exp.reference.backpatchLocs.add(bLoc);
+			// System.out.println("test " + exp.reference.backpatchLocs.size());
+		} else {
+			emitRM_Abs("LDA", pc, funcAddr, "jump to function entry");
+		}
+
+		// This runs after returning from function
+		emitRM("LD", fp, ofpFO, fp, "pop the called functions frame");
+
+		// restore the caller's frame offset
+		// frameOffset = oldFrameOffset;
+
+		// if non-void, save return value to caller's frame
+		if ( exp.reference.result.typ != NameTy.VOID ) {
+			emitRM("ST", ac, offset, fp, "save return value to the caller's stack frame");
+		}
+
+	}
+
+
+	@Override
+	public void visit(CompoundExp exp, int offset, boolean flag) {
+		// this and the line at the end *should* deal with nested scope??
+		int oldFrameOffset = frameOffset; 
+
+		// declarations will increase frameOffset for each allocated variable
+		if (exp.decs != null) {
+			exp.decs.accept(this, frameOffset, flag);
+		}
+
+		// since frameOffset was increased during declarations, use it as the beginning of local temps
+		if (exp.exps != null) {
+			exp.exps.accept(this, frameOffset, flag);
+		}
+
+		frameOffset = oldFrameOffset;
+	}
+
+
+	@Override
+	public void visit(DecList exp, int offset, boolean flag) {
+		while (exp != null) {
+
+			if (exp.head instanceof SimpleDec) {
+				SimpleDec var = (SimpleDec)(exp.head);
+				var.offset = globalOffset;
+				var.nestLevel = 0;
+				globalOffset -= 1;
+			}
+			else if (exp.head instanceof ArrayDec) {
+				// NICK TODO: global array declaration
+
+				// should work fairly similar to SimpleDec, except move globalOffset a larger amount (size + 1)
+				// also store the size of the array in the size location at this point
+				// see slides 16 and 58
+
+			}
+			else {
+				// prep backpatching for functions
+				int savedLoc = emitSkip(1);
+	
+				exp.head.accept(this, offset, flag);
+				
+				// emit backpatching for functions
+				int savedLoc2 = emitSkip(0);
+				emitBackup(savedLoc);
+				emitRM_Abs("LDA", pc, savedLoc2, "jump around function");
+				emitRestore();
+			}
+
+			exp = exp.tail;
+		}
+
+		// System.out.println("globaloffset: " + globalOffset);
+	}
+
+
+	@Override
+	public void visit(FunctionDec exp, int offset, boolean flag) {
+		// TODO: this might not be possible to happen unless there's no body to the function
+		if (exp.body == null || exp.body instanceof NilExp ) {
+			emitComment("skipping function prototype for " + exp.func);
+			// do nothing on function prototype
+			return;
+		}
+		else if (exp.funAddr.intValue() != 0) {
+			emitComment("skipping function redelcaration for " + exp.func);
+			// do nothing if already defined (from prototype)
+			return;
+		}	
+
+		// I don't know if this is needed
+		int oldFrameOffset = frameOffset;
+		frameOffset = initFO;
+
+		emitComment("");	// for extra space
+		emitComment("code for " + exp.func);
+		if (exp.func.equals("main")) {
+			mainEntry = emitLoc;
+		}
+		
+		exp.funAddr.set(emitLoc);
+		// System.out.println(exp.backpatchLocs.size());
+
+		for (int loc : exp.backpatchLocs) {
+			int savedLoc = emitSkip(0);
+			emitBackup(loc);
+			emitRM_Abs("LDA", pc, savedLoc, "jump to function entry");
+			emitRestore();
+		}
+		
+		emitRM("ST", ac, retFO, fp, "store return");
+
+		// // shouldn't need either of these, result isn't relevant and params were pushed by caller
+		// exp.result.accept(this, offset, flag);
+		if (exp.params != null) {
+			exp.params.accept(this, frameOffset, flag); 
+		}
+
+		exp.body.accept(this, frameOffset, flag);
+		emitRM("LD", pc, retFO, fp, "return to caller");
+
+		frameOffset = oldFrameOffset;
+	}
+
+	
+	@Override
+	public void visit(SimpleDec exp, int offset, boolean flag) {
+		// only used for local declarations, declare global variables in DecList
+
+		emitComment("allocated space for " + exp.name + " (" + frameOffset + ")");
+		exp.nestLevel = 1;
+		exp.offset = frameOffset;
+		
+		frameOffset -= 1;
+	}
+		
+	@Override
+	public void visit(ArrayDec exp, int offset, boolean flag) {
+		// only used for local declarations, declare global variables in DecList
+		
+		// should work fairly similar to SimpleDec, except move frameOffset a larger amount (size + 1)
+		// also store the size of the array in the size location at this point
+		// see slides 16 and 58
+
+		// NICK TODO: Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+	}
+
+	@Override
+	public void visit(VarExp exp, int offset, boolean flag) {
+		// set up the reference for the child SimpleVar or IndexVar
+		reference = (VarDec)exp.reference;
+		exp.variable.accept(this, offset, flag);
+	}
+	
+	@Override
+	public void visit(SimpleVar exp, int offset, boolean flag) {
+		int from = (reference.nestLevel == 0) ? gp : fp;
+		
+		if (flag) {
+			emitRM("LDA", ac, reference.offset, from, "load address of var in ac");
+			emitRM("ST", ac, offset, fp, "store address of var from ac into temporary");
+			return;
+		}
+		
+		emitRM("LD", ac, reference.offset, from, "load value of var in ac");
+		emitRM("ST", ac, offset, fp, "store value of var from ac into temporary");
+	}
+	
+	@Override
+	public void visit(IndexVar exp, int offset, boolean flag) {
+		// this should be implemented very similar to SimpleVar
+		// but some extra logic to use exp.index as an additional offset
+		// since index is an expression, call exp.accept(this, offset - 1, false)
+		// then the resulting index offset will be stored in offset - 1 (relative to fp)
+		// you will need to check to make sure this index is 0 <= index < size
+		// see instructions 18 - 30 in TMSimulator's sort.tm for an example of how to do this
+		// as well as access the variable (these lines are for the code `x = a[low];`)
+		// there are other examples in the same file too, lmk if you have issues
+
+		// Note I believe the sort.tm example doesn't have the correct runtime error output, it just halts
+		// as I understand slide 58 of 11w, we should output (using OUT) -1000000 for out of ramge below errors
+		// and -2000000 for out of range above errors
+
+		// NICK TODO: Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+	}
+	
+	@Override
+	public void visit(VarDecList exp, int offset, boolean flag) {
+		while (exp != null && exp.head != null) {
+			exp.head.accept(this, frameOffset, flag);
+			exp = exp.tail;
+		}
+	}
+
+	@Override
+	public void visit(IfExp exp, int offset, boolean flag) {
+		// NICK TODO: Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+	}
+
+	@Override
+	public void visit(WhileExp exp, int offset, boolean flag) {
+		// NICK TODO: Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+	}
+
+
+	@Override
+	public void visit(NilExp exp, int offset, boolean flag) {
+		// NICK TODO: Auto-generated method stub
+		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+	}
+
+		
+	@Override
+	public void visit(NameTy exp, int offset, boolean flag) {
+		// I don't think this will ever be visited because we performed typechecking already
+	}
+	
+	
+}
