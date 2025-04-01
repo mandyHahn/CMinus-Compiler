@@ -9,7 +9,7 @@ void edit(int b[]) {
   }
 }
 
-int main(void) {
+void main(void) {
   int a;
   int b[5];
   a = 0;
@@ -21,6 +21,4 @@ int main(void) {
   }
 
   edit(b);
-
-  return 1;
 }

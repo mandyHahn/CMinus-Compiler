@@ -181,7 +181,6 @@ public class CodeGenerator implements AbsynVisitor {
 	@Override
 	public void visit(OpExp exp, int offset, boolean flag) {
 		if (exp.left == null || exp.left instanceof NilExp) {
-			// TODO: is this correct?
 			emitComment("no lhs, treat as 0");
 			emitRM("LDC", ac, 0, 0, "load the literal 0 in ac");
 			emitRM("ST", ac, offset, fp, "store the literal int from ac into local temporary");
@@ -411,12 +410,18 @@ public class CodeGenerator implements AbsynVisitor {
 				globalOffset -= 1;
 			}
 			else if (exp.head instanceof ArrayDec) {
-				// NICK TODO: global array declaration
+				ArrayDec var  = (ArrayDec)(exp.head);
+				var.offset = globalOffset - var.size + 1;
+				var.nestLevel = 0;
+				globalOffset -= (var.size + 1);
 
-				// should work fairly similar to SimpleDec, except move globalOffset a larger amount (size + 1)
-				// also store the size of the array in the size location at this point
-				// see slides 16 and 58
-
+				// This case should never happen; throw an error and exit if it does.
+				if (var.size == 0) {
+					System.err.println("Error: array " + var.name + " has size 0, cannot be declared");
+					System.exit(1);
+				}
+				emitRM("LDC", ac, var.size, 0, "Load the size of the array into data register");
+				emitRM("ST", ac, globalOffset - var.size, gp, "Load the size of the array into the proper spot in memory");
 			}
 			else {
 				// prep backpatching for functions
@@ -438,10 +443,9 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(FunctionDec exp, int offset, boolean flag) {
-		// TODO: this might not be possible to happen unless there's no body to the function
 		if (exp.body == null || exp.body instanceof NilExp ) {
-			emitComment("skipping function prototype for " + exp.func);
-			// do nothing on function prototype
+			System.err.println("Error: function " + exp.func + " has no definition for the prototype.");
+			System.exit(1);
 			return;
 		}
 		else if (exp.funAddr.intValue() != 0) {
@@ -499,11 +503,15 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(ArrayDec exp, int offset, boolean flag) {		
 		// Local
 		exp.nestLevel = 1;
-		exp.offset = frameOffset - exp.size + 1;
 		
-		// LDC, then ST
-		emitRM("LDC", ac, exp.size, 0, "Load the size of the array into data register");
-		emitRM("ST", ac, frameOffset - exp.size, fp, "Load the size of the array into the proper spot in memory");
+		if (exp.size != 0) {
+			exp.offset = frameOffset - exp.size + 1;
+			emitRM("LDC", ac, exp.size, 0, "Load the size of the array into data register");
+			emitRM("ST", ac, frameOffset - exp.size, fp, "Load the size of the array into the proper spot in memory");
+		} else {
+			exp.offset = frameOffset;
+		}
+		
 		frameOffset -= (exp.size + 1);
 	}
 
@@ -518,7 +526,6 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(SimpleVar exp, int offset, boolean flag) {
 		int from = (reference.nestLevel == 0) ? gp : fp;
 		
-		// TODO: this should handle "passed in arrays" correctly, but needs testing once arrays implemented
 		if (flag || reference instanceof ArrayDec) {
 			emitRM("LDA", ac, reference.offset, from, "load address of var in ac");
 			emitRM("ST", ac, offset, fp, "store address of var from ac into temporary");
@@ -529,6 +536,35 @@ public class CodeGenerator implements AbsynVisitor {
 		emitRM("ST", ac, offset, fp, "store value of var from ac into temporary");
 	}
 	
+	public void checkBounds(int offset) {
+		emitRM("ST", ac, offset, fp, "prep for persistent registers");
+
+		// Below bounds checking
+		emitRM("JGE", ac1, 3, pc, "jump to error if index < 0");
+		// These will be jumped over if the index is greater than 0
+		emitRM("LDC", ac, -1000000, 0, "load error code if below bounds");
+		emitRO("OUT", ac, 0, 0, "output error code for below bounds");
+		emitRO("HALT", 0, 0, 0, "halt execution");
+
+		// Above bounds checking
+		emitRM("LD", ac, -1, ac, "load the size of the array into ac");
+		emitRO("SUB", ac, ac, ac1, "subtract the index from size to check if it is greater than size");
+		emitRM("JGT", ac, 3, pc, "jump to error if index > size");
+		// These will be jumped over if the index is not above bounds
+		emitRM("LDC", ac, -2000000, 0, "load error code if above bounds");
+		emitRO("OUT", ac, 0, 0, "output error code for above bounds");
+		emitRO("HALT", 0, 0, 0, "halt execution");
+
+
+
+		emitRM("LD", ac, offset, fp, "load the memory location back into ac");
+
+		// emitRM("LDC", ac1, size, 0, "load the size of the array into ac1 for bounds checking");
+		// emitRM("SUB", ac1, ac1, index, "subtract the index from size to check if it is greater than size");
+		// emitRM("JGT", ac1, 2, pc, "jump to error if index > size");
+	}
+
+
 	@Override
 	public void visit(IndexVar exp, int offset, boolean flag) {
 		// this should be implemented very similar to SimpleVar
@@ -563,35 +599,27 @@ public class CodeGenerator implements AbsynVisitor {
 		// Note I believe the sort.tm example doesn't have the correct runtime error output, it just halts
 		// as I understand slide 58 of 11w, we should output (using OUT) -1000000 for out of ramge below errors
 		// and -2000000 for out of range above errors
+
+
 		ArrayDec localReference = (ArrayDec)reference;
 		int from = (localReference.nestLevel == 0) ? gp : fp;
+		exp.index.accept(this, offset, false);
+		emitRM("LD", ac1, offset, fp, "load the index into ac1");
 
 		if (localReference.size > 0) {
-			// Case where array is declared locally
-
-			// TODO: I had to pass in false here or else stuff broke; please comment
-			exp.index.accept(this, offset, false);
-			emitRM("LD", ac1, offset, fp, "load the index into ac1");
-
-			// TODO: Nick check index OOB
-
 			emitRM("LDA", ac, localReference.offset, from, "load the base address of the array into ac");
-			emitRO("ADD", ac, ac, ac1, "add the index to the base address to get the memory location to pull from");
-			
-			// If the flag is false, we are passing back the memory address, not the value
-			if (!flag) {
-				emitRM("LD", ac, 0, ac, "load the value of the array at the index into ac1");
-			}
-			emitRM("ST", ac, offset, fp, "store the result in ac into the local temporary");
 		} else {
-			emitComment("----- Begin array passed as parameter ------");
-			// Case where array is passed in as a parameter
-			exp.index.accept(this, offset, false);
-			emitRM("LD", ac1, offset, fp, "load the index into ac1");
-
 			// If size is 0, it will always be from fp
-			emitRM("LD", ac, localReference.offset, fp, "load the base address of the array into ac");
+			emitRM("LD", ac, localReference.offset, fp, "load the base address of the array from stack into ac");
 		}
+
+		checkBounds(offset);
+
+		emitRO("ADD", ac, ac, ac1, "add the index to the base address to get the memory location to pull from");
+		if (!flag) {
+			emitRM("LD", ac, 0, ac, "load the value of the array at the index into ac1");
+		}
+		emitRM("ST", ac, offset, fp, "store the result in ac into the local temporary");
 		emitRM("LD", ac, offset, fp, "load the value of the array at the index into ac");
 	}
 	
