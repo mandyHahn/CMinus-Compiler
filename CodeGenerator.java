@@ -496,15 +496,15 @@ public class CodeGenerator implements AbsynVisitor {
 	}
 		
 	@Override
-	public void visit(ArrayDec exp, int offset, boolean flag) {
-		// only used for local declarations, declare global variables in DecList
+	public void visit(ArrayDec exp, int offset, boolean flag) {		
+		// Local
+		exp.nestLevel = 1;
+		exp.offset = frameOffset - exp.size;
 		
-		// should work fairly similar to SimpleDec, except move frameOffset a larger amount (size + 1)
-		// also store the size of the array in the size location at this point
-		// see slides 16 and 58
-
-		// NICK TODO: Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+		// LDC, then ST
+		emitRM("LDC", ac, exp.size, 0, "Load the size of the array into data register");
+		emitRM("ST", ac, frameOffset - exp.size, fp, "Load the size of the array into the proper spot in memory");
+		frameOffset -= (exp.size + 1);
 	}
 
 	@Override
@@ -595,8 +595,29 @@ public class CodeGenerator implements AbsynVisitor {
 		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
 		// as always ask if this is unclear
 
-		// NICK TODO: Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+		exp.test.accept(this, offset, flag);
+		emitRM("LD", ac, offset, fp, "load the result of the if expression into ac");
+		int savedLoc = emitSkip(1); // Backpatching for the if statement
+		exp.thenpart.accept(this, offset, flag);
+		
+		if (exp.elsepart != null) {
+			// There is an else part -- need another JNE to jump past the else part if present
+			int savedLoc2 = emitSkip(1);
+			int beginOfElse = emitSkip(0);
+			emitBackup(savedLoc);
+			emitRM_Abs("JNE", ac, beginOfElse, "jump to else statement if test is false");
+			emitRestore();
+			exp.elsepart.accept(this, offset, flag);
+			int endOfElse = emitSkip(0);
+			emitBackup(savedLoc2);
+			emitRM_Abs("LDA", pc, endOfElse, "Jump to end of else statement");
+		} else {
+			// There is no else part -- Jump to the end of the if statement using backpatching
+			int endOfIf = emitSkip(0);
+			emitBackup(savedLoc);
+			emitRM_Abs("JNE", ac, endOfIf, "jump past if statement if test is false");
+			emitRestore();
+		}
 	}
 
 	@Override

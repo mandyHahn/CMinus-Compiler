@@ -472,6 +472,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
       // might not be an error, but make sure to set dtype specially so higher scopes
       // can check
       exp.dtype = (VarDec) type;
+      exp.reference = type;
       return;
     } else if (exp.variable instanceof IndexVar && !(type instanceof ArrayDec)) {
       reportError(exp, "Invalid index access", "Cannot access index of non-array variable \"" + name + "\"");
