@@ -503,8 +503,8 @@ public class CodeGenerator implements AbsynVisitor {
 		
 		// LDC, then ST
 		emitRM("LDC", ac, exp.size, 0, "Load the size of the array into data register");
-		emitRM("ST", ac, frameOffset - exp.size, fp, "Load the size of the array into the proper spot in memory");
-		frameOffset -= (exp.size + 1);
+		emitRM("ST", ac, frameOffset - exp.size - 1, fp, "Load the size of the array into the proper spot in memory");
+		frameOffset -= (exp.size + 2);
 	}
 
 	@Override
@@ -563,9 +563,31 @@ public class CodeGenerator implements AbsynVisitor {
 		// Note I believe the sort.tm example doesn't have the correct runtime error output, it just halts
 		// as I understand slide 58 of 11w, we should output (using OUT) -1000000 for out of ramge below errors
 		// and -2000000 for out of range above errors
+		ArrayDec localReference = (ArrayDec)reference;
+		int from = (localReference.nestLevel == 0) ? gp : fp;
 
-		// NICK TODO: Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+		if (localReference.size > 0) {
+			// Case where array is declared locally
+
+			// TODO: I had to pass in false here or else stuff broke; please comment
+			exp.index.accept(this, offset, false);
+			emitRM("LD", ac1, offset, fp, "load the index into ac1");
+
+			// TODO: Nick check index OOB
+
+			emitRM("LDA", ac, localReference.offset, from, "load the base address of the array into ac");
+			emitRO("ADD", ac, ac, ac1, "add the index to the base address to get the memory location to pull from");
+			
+			// If the flag is false, we are passing back the memory address, not the value
+			if (!flag) {
+				emitRM("LD", ac, 0, ac, "load the value of the array at the index into ac1");
+			}
+			emitRM("ST", ac, offset, fp, "store the result in ac into the local temporary");
+		} else {
+			// Case where array is passed in as a parameter
+			throw new UnsupportedOperationException("Unimplemented method 'visit'");
+		}
+		emitRM("LD", ac, offset, fp, "load the value of the array at the index into ac");
 	}
 	
 	@Override
@@ -578,44 +600,28 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(IfExp exp, int offset, boolean flag) {
-		// this shouldn't be *too* bad so lmk if you're confused
-		// theoreticaly: 
-		//	- visit the test, passing in offset --> result of test should be stored in offset (or maybe ac)
-		//  - store the result of the test in ac
-		//	- store the location for backpatching -- "savedLoc1" (we don't know how long the "then" 
-		//      part of the if will be, so we don't know where to jump ahead to, so we need backpatching)		
-		//  - visit the "then" part of the if statement
-		//  - IF THERES AN ELSE BLOCK: store the location for backpatching again -- "savedLoc2" 
-		//      (for jumping past the else block after the "then" block evaluates)
-		//  - perform the backpatching for savedLoc1 --> use JNE with ac to jump to the current instruction if the test is false (zero)
-		//  - IF THERES AN ELSE BLOCK: visit the "else" part of the if statement
-		//  - IF THERES AN ELSE BLOCK: perform the backpatching for savedLoc2 --> use LDA to perform an unconditional 
-		//      jump past the else block (to the current instruction)
-
-		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
-		// as always ask if this is unclear
-
 		exp.test.accept(this, offset, flag);
 		emitRM("LD", ac, offset, fp, "load the result of the if expression into ac");
 		int savedLoc = emitSkip(1); // Backpatching for the if statement
 		exp.thenpart.accept(this, offset, flag);
 		
-		if (exp.elsepart != null) {
+		if (exp.elsepart != null && !(exp.elsepart instanceof NilExp)) {
 			// There is an else part -- need another JNE to jump past the else part if present
 			int savedLoc2 = emitSkip(1);
 			int beginOfElse = emitSkip(0);
 			emitBackup(savedLoc);
-			emitRM_Abs("JNE", ac, beginOfElse, "jump to else statement if test is false");
+			emitRM_Abs("JEQ", ac, beginOfElse, "jump to else statement if test is false");
 			emitRestore();
 			exp.elsepart.accept(this, offset, flag);
 			int endOfElse = emitSkip(0);
 			emitBackup(savedLoc2);
 			emitRM_Abs("LDA", pc, endOfElse, "Jump to end of else statement");
+			emitRestore();
 		} else {
 			// There is no else part -- Jump to the end of the if statement using backpatching
 			int endOfIf = emitSkip(0);
 			emitBackup(savedLoc);
-			emitRM_Abs("JNE", ac, endOfIf, "jump past if statement if test is false");
+			emitRM_Abs("JEQ", ac, endOfIf, "jump past if statement if test is false");
 			emitRestore();
 		}
 	}
@@ -634,9 +640,17 @@ public class CodeGenerator implements AbsynVisitor {
 
 		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
 		// as always ask if this is unclear
-
-		// NICK TODO: Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'visit'");
+		emitComment(" ------ Begin while statement ------");
+		int whileStart = emitSkip(0);
+		exp.test.accept(this, offset, flag);
+		emitRM("LD", ac, offset, fp, "load the result of the while expression into ac");
+		int savedLoc = emitSkip(1); // Backpatching for the while statemen
+		exp.body.accept(this, offset, flag);
+		emitRM_Abs("LDA", pc, whileStart, "jump back to the start of the while statement unconditionally");
+		int endOfWhile = emitSkip(0);
+		emitBackup(savedLoc);
+		emitRM_Abs("JEQ", ac, endOfWhile, "jump to end of while statement if test is false");
+		emitRestore();
 	}
 
 

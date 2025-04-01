@@ -227,21 +227,18 @@ fun_declaration ::= type_specifier:t ID:i LPAREN params:p RPAREN compound_stmt:s
   ;
 
 
-// TODO: nilexpr
 fun_prototype ::= type_specifier:t ID:i LPAREN params:p RPAREN SEMI
     {:
       RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
     :}
   | type_specifier:t ID:i LPAREN RPAREN SEMI
     {:
-      // TODO: other error print info
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Empty parameter list invalid (should be void?)");
       RESULT = new FunctionDec(tleft, tright, t, i, null, new NilExp(tleft, tright));
     :}
   | type_specifier:t ID:i LPAREN params:p RPAREN 
     {:
-      // TODO: other error print info
       parser.manual_report_error(ileft, iright, "ID", i);
       parser.report_reason("Function prototypes need to end with a semicolon");
       RESULT = new FunctionDec(tleft, tright, t, i, p, new NilExp(tleft, tright));
@@ -291,7 +288,6 @@ param_list ::= param_list:p1 COMMA param:p2
     :}
   | param_list:p1 param:p2 
     {:
-      // TODO: print line number and other error info
       parser.manual_report_error(p1left, p1right, null, null);
       parser.report_reason("Missing comma in parameter declarations");
       if (p2 != null) {
@@ -383,7 +379,6 @@ statement ::= expression_stmt:e
     :};
 
 
-// TODO: nilexpr
 expression_stmt ::= expression:e SEMI 
     {:
       RESULT = e;
@@ -395,7 +390,6 @@ expression_stmt ::= expression:e SEMI
     :};
 
 
-// TODO: nilexpr
 selection_stmt ::= IF:i LPAREN expression:e RPAREN statement:s 
     {:
       RESULT = new IfExp(ileft, iright, e, s, new NilExp(ileft, iright));
@@ -437,7 +431,6 @@ iteration_stmt ::= WHILE:w LPAREN expression:e RPAREN statement:s
     ;
 
 
-// TODO: nilexpr
 return_stmt ::= RETURN:r expression:e SEMI 
     {:
       RESULT = new ReturnExp(rleft, rright, e);
@@ -536,7 +529,6 @@ factor ::= LPAREN:l expression:e RPAREN
     :}
   | LPAREN:l expression:e
     {:
-      //TODO: proper output
       parser.manual_report_error(lleft, lright, "LPAREN", null);
       parser.report_reason("Unmatched ( in expression");
       RESULT = new NilExp(lleft, lright);
