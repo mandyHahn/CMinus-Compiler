@@ -1,7 +1,6 @@
 import absyn.*;
 
 public class CodeGenerator implements AbsynVisitor {
-	int mainEntry, globalOffset, frameOffset;
 	final int ac = 0;
 	final int ac1 = 1;
 	final int fp = 5;
@@ -11,7 +10,8 @@ public class CodeGenerator implements AbsynVisitor {
 	final int ofpFO = 0;
 	final int retFO = -1;
 	final int initFO = -2;
-
+	
+	int mainEntry, globalOffset, frameOffset;
 	int emitLoc, highEmitLoc;
 	int outputEntry, inputEntry;
 
@@ -321,6 +321,7 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(ReturnExp exp, int offset, boolean flag) {
 		exp.exp.accept(this, offset, flag);
 		emitRM("LD", ac, offset, fp, "save return value to ac");
+		emitRM("LD", pc, retFO, fp, "return to caller from return statement");
 	}
 
 	@Override
@@ -517,7 +518,8 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(SimpleVar exp, int offset, boolean flag) {
 		int from = (reference.nestLevel == 0) ? gp : fp;
 		
-		if (flag) {
+		// TODO: this should handle "passed in arrays" correctly, but needs testing once arrays implemented
+		if (flag || reference instanceof ArrayDec) {
 			emitRM("LDA", ac, reference.offset, from, "load address of var in ac");
 			emitRM("ST", ac, offset, fp, "store address of var from ac into temporary");
 			return;
@@ -537,6 +539,26 @@ public class CodeGenerator implements AbsynVisitor {
 		// see instructions 18 - 30 in TMSimulator's sort.tm for an example of how to do this
 		// as well as access the variable (these lines are for the code `x = a[low];`)
 		// there are other examples in the same file too, lmk if you have issues
+
+		// Update: 
+		//	we might have to call to explain this later, but essentially you will have 
+		//	two seperate cases in IndexVar
+
+		//	1. the array was declared locally, so the entire array exists in the current 
+		//		stack --> this is the correct and simple way of accessing an array, 
+		//		where exp.reference.offset is a[0] relative to the fp, as we discussed
+
+		//	2. the array was passed into the local scope via function parameters --> since 
+		//		only the address of the array is passed in, exp.reference.offset instead 
+		//		points to the location relative to fp that holds the ADDRESS of a[0] 
+		//		(NOT a[0] itself) --> so extra steps will need to be taken to store / access 
+		//		the correct element of the array, since the index needs to be relative to the 
+		//		address stored. This all has to be done at runtime (ie you need to generate 
+		//		instructions to handle this case appropriately) since we cannot know the address 
+		//		of the array at compile time
+
+		//	To distinguish between those two cases, you can check exp.reference.size, if size is 0 then 
+		//	generate code for case 2, if size is > 0, generate code for case 1
 
 		// Note I believe the sort.tm example doesn't have the correct runtime error output, it just halts
 		// as I understand slide 58 of 11w, we should output (using OUT) -1000000 for out of ramge below errors
