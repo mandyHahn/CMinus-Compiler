@@ -499,12 +499,12 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(ArrayDec exp, int offset, boolean flag) {		
 		// Local
 		exp.nestLevel = 1;
-		exp.offset = frameOffset - exp.size;
+		exp.offset = frameOffset - exp.size + 1;
 		
 		// LDC, then ST
 		emitRM("LDC", ac, exp.size, 0, "Load the size of the array into data register");
-		emitRM("ST", ac, frameOffset - exp.size - 1, fp, "Load the size of the array into the proper spot in memory");
-		frameOffset -= (exp.size + 2);
+		emitRM("ST", ac, frameOffset - exp.size, fp, "Load the size of the array into the proper spot in memory");
+		frameOffset -= (exp.size + 1);
 	}
 
 	@Override
@@ -584,8 +584,13 @@ public class CodeGenerator implements AbsynVisitor {
 			}
 			emitRM("ST", ac, offset, fp, "store the result in ac into the local temporary");
 		} else {
+			emitComment("----- Begin array passed as parameter ------");
 			// Case where array is passed in as a parameter
-			throw new UnsupportedOperationException("Unimplemented method 'visit'");
+			exp.index.accept(this, offset, false);
+			emitRM("LD", ac1, offset, fp, "load the index into ac1");
+
+			// If size is 0, it will always be from fp
+			emitRM("LD", ac, localReference.offset, fp, "load the base address of the array into ac");
 		}
 		emitRM("LD", ac, offset, fp, "load the value of the array at the index into ac");
 	}
