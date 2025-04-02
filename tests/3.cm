@@ -1,25 +1,101 @@
-/* This file demonstrates some variable level declaration errors
-Expected errors:
-  1. (line 15) variable redeclaration in same scope
-  2. (line 18) undefined variable (y)
-  3. (line 20) invalid function call (wrong parameter type, bool instead of int) 
-*/
+/* program to AND, OR, or XOR a user input list while also summing the elements of the list */
+/* first the program will allow the user to enter a mode (1=AND, 2=OR, 3=XOR), then an 8 element array */
+/* the program will perform the operation between the user list and a mask array (0xFF) */
+/* the output will print the array elements in order once the operation is performed, then the result of OP between all array elements */
+/* Note: the output 1000000001 is used as a line seperator for clarity */
 
-bool foo( int v ) {
-  return true;
+bool maskList[8];
+int opType;
+
+bool performOp(bool el1, bool el2);
+int boolToInt(bool b);
+
+int recursiveCalculateMask(int base[], bool mask[], int pos) {
+	int oldBase;
+	oldBase = base[pos];
+	base[pos] = boolToInt(performOp(base[pos], mask[pos]));
+
+	if (pos > 0)
+		return recursiveCalculateMask(base, mask, pos - 1) + oldBase;
+	else
+		return oldBase;
 }
 
-void main( void ) {
-  int var;
-  int x;
-  bool x;   /* invalid redeclaration */
+bool performOp(bool el1, bool el2) {
+	bool result;
 
-  /* y is not declared */
-  if (var == y) {
-    bool var;
-    var = foo( var ); /* uses the local bool var not int var from main (invalid call) */
-    return;
-  }
+	if (opType == 1) {
+		result = el1 && el2;
+	}
+	else {
+		/* OR case */
+		if (opType == 2) {
+			result = el1 || el2;
+		}
 
-  return;
+		else {
+			/* XOR case */
+			if (opType == 3) {
+				result = (el1 || el2) && ~(el1 && el2);
+			}
+
+			/* error case */
+			else {
+				output(-1111111111);
+				return 0;
+			}
+		}
+	}
+
+	return result;
+}
+
+int boolToInt(bool b) {
+	if (b) return 1;
+	else return 0;
+}
+
+
+void printOutput(int maskedArr[], int tot) {
+	int counter;
+	
+	output(1000000001);
+	counter = 0;
+	while (counter < 8) {
+		output(maskedArr[counter]);
+		counter = counter + 1;
+	}
+
+	output(1000000001);
+	output(tot);
+}
+
+void main(void) {
+	int userList[8];
+	int counter;
+
+	counter = 0;
+
+	/* load the global mask list with 1s */
+	while (counter < 8) {
+		maskList[counter] = 1;
+		counter = counter + 1;
+	}
+
+	counter = 0;
+
+	opType = input();
+	output(1000000001);
+
+	/* load the global mask list with 1s */
+	while (counter < 8) {
+		userList[counter] = input();
+		counter = counter + 1;
+	}
+
+	{
+		int result;
+		result = recursiveCalculateMask(userList, maskList, counter - 1); 
+		printOutput(userList, result);
+	}	
 }

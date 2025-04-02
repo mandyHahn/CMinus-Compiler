@@ -1,0 +1,25 @@
+/* This file demonstrates some variable level declaration errors
+Expected errors:
+  1. (line 15) variable redeclaration in same scope
+  2. (line 18) undefined variable (y)
+  3. (line 20) invalid function call (wrong parameter type, bool instead of int) 
+*/
+
+bool foo( int v ) {
+  return true;
+}
+
+void main( void ) {
+  int var;
+  int x;
+  bool x;   /* invalid redeclaration */
+
+  /* y is not declared */
+  if (var == y) {
+    bool var;
+    var = foo( var ); /* uses the local bool var not int var from main (invalid call) */
+    return;
+  }
+
+  return;
+}
