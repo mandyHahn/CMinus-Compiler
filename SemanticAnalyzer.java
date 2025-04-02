@@ -533,7 +533,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
 
       // Verify the types of the parameters match
       while (functionParams != null && callExps != null) {
-        if (!functionParams.head.type().equals(callExps.head.dtype.type())) {
+        if (!functionParams.head.type().equals(callExps.head.dtype.type()) && !(functionParams.head.type().equals("bool") && callExps.head.dtype.type().equals("int"))) {
           reportError(callExps.head, "Invalid parameter",
               "Call for function \"" + function.func + "\" parameter " + paramNum +
                   " has an unexpected type.\n" +
