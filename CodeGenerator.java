@@ -318,7 +318,10 @@ public class CodeGenerator implements AbsynVisitor {
 		
 	@Override
 	public void visit(ReturnExp exp, int offset, boolean flag) {
-		exp.exp.accept(this, offset, flag);
+		if (exp.exp != null && !(exp.exp instanceof NilExp)) {
+			exp.exp.accept(this, offset, flag);
+		}
+
 		emitRM("LD", ac, offset, fp, "save return value to ac");
 		emitRM("LD", pc, retFO, fp, "return to caller from return statement");
 	}
@@ -413,8 +416,7 @@ public class CodeGenerator implements AbsynVisitor {
 				ArrayDec var  = (ArrayDec)(exp.head);
 				var.offset = globalOffset - var.size + 1;
 				var.nestLevel = 0;
-				globalOffset -= (var.size + 1);
-
+				
 				// This case should never happen; throw an error and exit if it does.
 				if (var.size == 0) {
 					System.err.println("Error: array " + var.name + " has size 0, cannot be declared");
@@ -422,6 +424,7 @@ public class CodeGenerator implements AbsynVisitor {
 				}
 				emitRM("LDC", ac, var.size, 0, "Load the size of the array into data register");
 				emitRM("ST", ac, globalOffset - var.size, gp, "Load the size of the array into the proper spot in memory");
+				globalOffset -= (var.size + 1);
 			}
 			else {
 				// prep backpatching for functions
@@ -526,7 +529,7 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(SimpleVar exp, int offset, boolean flag) {
 		int from = (reference.nestLevel == 0) ? gp : fp;
 		
-		if (flag || reference instanceof ArrayDec) {
+		if (flag || (reference instanceof ArrayDec && ((ArrayDec)reference).size > 0)) {
 			emitRM("LDA", ac, reference.offset, from, "load address of var in ac");
 			emitRM("ST", ac, offset, fp, "store address of var from ac into temporary");
 			return;
