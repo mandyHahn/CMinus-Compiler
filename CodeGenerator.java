@@ -394,9 +394,10 @@ public class CodeGenerator implements AbsynVisitor {
 				
 				// This case should never happen; throw an error and exit if it does.
 				if (var.size == 0) {
-					System.err.println("Error: array " + var.name + " has size 0, cannot be declared");
-					System.exit(1);
+					System.err.println("Error in line " + exp.row + ", column " + exp.col + ": Compile error");
+					System.err.println("Reason: array '" + var.name + "'' has size 0, cannot be declared\n");
 				}
+
 				emitRM("LDC", ac, var.size, 0, "Load the size of the array into data register");
 				emitRM("ST", ac, globalOffset - var.size, gp, "Load the size of the array into the proper spot in memory");
 				globalOffset -= (var.size + 1);
@@ -422,8 +423,8 @@ public class CodeGenerator implements AbsynVisitor {
 	@Override
 	public void visit(FunctionDec exp, int offset, boolean flag) {
 		if (exp.body == null || exp.body instanceof NilExp ) {
-			System.err.println("Error: function " + exp.func + " has no definition for the prototype.");
-			System.exit(1);
+			System.err.println("Error in line " + exp.row + ", column " + exp.col + ": Compile error");
+			System.err.println("Reason: function '" + exp.func + "' has no definition for the prototype.\n");
 			return;
 		}
 		else if (exp.funAddr.intValue() != 0) {
