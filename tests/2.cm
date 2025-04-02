@@ -2,6 +2,7 @@
  * This file checks if a user-inputted number is odd. 
  * It does this using mutual recursion. 
  * Prints 0 if the number is odd, prints 1 if it is even. 
+ * continues until the user enters a number <= 0
  */
 
 bool isEven(int n);
