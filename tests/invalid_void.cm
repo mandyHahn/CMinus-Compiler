@@ -1,7 +1,0 @@
-int main(void) {
-  void a;
-  void b[5];
-
-  a = 5;
-  b[0] = 5;
-}

@@ -19,7 +19,7 @@ void g(int m) {
   }
 }
 
-int main(void) {
+void main(void) {
   x = input();
   y = input();
   g(x);
