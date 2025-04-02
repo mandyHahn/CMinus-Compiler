@@ -1,0 +1,31 @@
+/*
+ * This file checks if a user-inputted number is odd. 
+ * It does this using mutual recursion. 
+ * Prints 0 if the number is odd, prints 1 if it is even. 
+ */
+
+bool isEven(int n);
+bool isOdd(int n);
+
+bool isOdd(int n) {
+  if (n == 0) return true;
+  return ~isEven(n - 1);
+}
+
+bool isEven(int n) {
+  if (n == 0) return true;
+  return ~isOdd(n - 1);
+}
+
+void main(void) {
+  int n;
+  n = input();
+  while (n > 0) {
+    if (isEven(n)) {
+      output(1);
+    } else {
+      output(0);
+    }
+    n = input();
+  }
+}

@@ -73,29 +73,6 @@ public class CodeGenerator implements AbsynVisitor {
 		emitLoc = highEmitLoc;
 	}
 
-	/*
-		-- RO instructions -- opcode r, s, t
-		HALT 	stop execution
-		IN 		reg[r] <- read an integer from input
-		OUT 	reg[r] -> write to standard output
-		ADD 	reg[r] = reg[s] + reg[t]
-		SUB 	reg[r] = reg[s] - reg[t]
-		MUL 	reg[r] = reg[s] * reg[t]
-		DIV 	reg[r] = reg[s] / reg[t] (may generate ZERO_DIV)
-	
-		-- RM instructions -- opcode r, d(s) -- a = d + reg[s]
-		LD 		reg[r] = dMem[a]
-		LDA 	reg[r] = a
-		LDC 	reg[r] = d
-		ST 		dMem[a] = reg[r]
-		JLT 	if( reg[r] < 0 ) reg[PC_REG] = a
-		JLE 	if( reg[r] <= 0 ) reg[PC_REG] = a
-		JGT 	if( reg[r] > 0 ) reg[PC_REG] = a
-		JGE 	if( reg[r] >= 0 ) reg[PC_REG] = a
-		JEQ 	if( reg[r] == 0 ) reg[PC_REG] = a
-		JNE 	if( reg[r] != 0 ) reg[PC_REG] = a
-	 */
-
 	public void visit(Absyn trees) {
 		// generate prelude
 		emitComment("prelude");
@@ -286,8 +263,6 @@ public class CodeGenerator implements AbsynVisitor {
 				emitRM("LDC", ac, 0, 0, "lhs != rhs is false, set ac 0");
 				break;
 				
-			// TODO: is short circuit necessary?
-			// boolean operators
 			case OpExp.AND:
 				// AND is the same thing as a * b
 				emitRO("MUL", ac, ac, ac1, "AND ac and ac1, store result in ac");
@@ -477,9 +452,6 @@ public class CodeGenerator implements AbsynVisitor {
 		
 		emitRM("ST", ac, retFO, fp, "store return");
 
-		// shouldn't need this, result isn't relevant
-		// exp.result.accept(this, offset, flag);
-		
 		if (exp.params != null) {
 			exp.params.accept(this, frameOffset, flag); 
 		}
@@ -558,52 +530,12 @@ public class CodeGenerator implements AbsynVisitor {
 		emitRO("OUT", ac, 0, 0, "output error code for above bounds");
 		emitRO("HALT", 0, 0, 0, "halt execution");
 
-
-
 		emitRM("LD", ac, offset, fp, "load the memory location back into ac");
-
-		// emitRM("LDC", ac1, size, 0, "load the size of the array into ac1 for bounds checking");
-		// emitRM("SUB", ac1, ac1, index, "subtract the index from size to check if it is greater than size");
-		// emitRM("JGT", ac1, 2, pc, "jump to error if index > size");
 	}
 
 
 	@Override
 	public void visit(IndexVar exp, int offset, boolean flag) {
-		// this should be implemented very similar to SimpleVar
-		// but some extra logic to use exp.index as an additional offset
-		// since index is an expression, call exp.accept(this, offset - 1, false)
-		// then the resulting index offset will be stored in offset - 1 (relative to fp)
-		// you will need to check to make sure this index is 0 <= index < size
-		// see instructions 18 - 30 in TMSimulator's sort.tm for an example of how to do this
-		// as well as access the variable (these lines are for the code `x = a[low];`)
-		// there are other examples in the same file too, lmk if you have issues
-
-		// Update: 
-		//	we might have to call to explain this later, but essentially you will have 
-		//	two seperate cases in IndexVar
-
-		//	1. the array was declared locally, so the entire array exists in the current 
-		//		stack --> this is the correct and simple way of accessing an array, 
-		//		where exp.reference.offset is a[0] relative to the fp, as we discussed
-
-		//	2. the array was passed into the local scope via function parameters --> since 
-		//		only the address of the array is passed in, exp.reference.offset instead 
-		//		points to the location relative to fp that holds the ADDRESS of a[0] 
-		//		(NOT a[0] itself) --> so extra steps will need to be taken to store / access 
-		//		the correct element of the array, since the index needs to be relative to the 
-		//		address stored. This all has to be done at runtime (ie you need to generate 
-		//		instructions to handle this case appropriately) since we cannot know the address 
-		//		of the array at compile time
-
-		//	To distinguish between those two cases, you can check exp.reference.size, if size is 0 then 
-		//	generate code for case 2, if size is > 0, generate code for case 1
-
-		// Note I believe the sort.tm example doesn't have the correct runtime error output, it just halts
-		// as I understand slide 58 of 11w, we should output (using OUT) -1000000 for out of ramge below errors
-		// and -2000000 for out of range above errors
-
-
 		ArrayDec localReference = (ArrayDec)reference;
 		int from = (localReference.nestLevel == 0) ? gp : fp;
 		exp.index.accept(this, offset, false);
@@ -664,18 +596,6 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(WhileExp exp, int offset, boolean flag) {
-		// theoretically, this is similar to the if statement but jumping differently
-		// this is rough and done quick with "what I think the steps will be", might deviate slightly in practice but it should be 90% good
-		//  - on entry, store the current emitLoc (probably, it might be a different value) "jmpLoc"
-		//  - visit the test, passing in offset --> result of test should be stored in offset (or maybe ac)
-		//  - store the result of the test in ac
-		//  - store the location for backpatching -- "savedLoc" (we don't know low long the body will be to jump past it on false)
-		//  - visit the body
-		//	- add an unconditional jump (using LDA) to jump back to "jmpLoc" 
-		//  - perform backpatching for savedLoc --> use JNE with ac to jump to the current instruction if the test is false (zero)
-
-		// for references on how to do backpatching, see the prelude / finale generation and slide 36 of 11w
-		// as always ask if this is unclear
 		emitComment(" ------ Begin while statement ------");
 		int whileStart = emitSkip(0);
 		exp.test.accept(this, offset, flag);
@@ -692,9 +612,6 @@ public class CodeGenerator implements AbsynVisitor {
 
 	@Override
 	public void visit(NilExp exp, int offset, boolean flag) {
-		// should this do anything??? I think I've coded things such that it is never called
-		// leaving it as a todo / exception until we know for sure
-
 		// TODO: Auto-generated method stub
 		throw new UnsupportedOperationException("Unimplemented method 'visit'");
 	}
@@ -704,6 +621,4 @@ public class CodeGenerator implements AbsynVisitor {
 	public void visit(NameTy exp, int offset, boolean flag) {
 		// I don't think this will ever be visited because we performed typechecking already
 	}
-	
-	
 }
