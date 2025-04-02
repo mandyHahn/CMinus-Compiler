@@ -20,4 +20,13 @@ public class ArrayDec extends VarDec {
   public String type() {
     return typ.name() + "[]";
   }
+
+  public String type(boolean includeType) {
+    if (includeType) {
+      return typ.name() + "[" + size + "]";
+    }
+    else {
+      return typ.name() + "[]";
+    }
+  }
 }
