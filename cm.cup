@@ -177,6 +177,20 @@ var_declaration ::= type_specifier:t ID:i SEMI
     :} 
   | type_specifier:t ID:i LSQUARE NUM:n RSQUARE SEMI
     {:
+      int num = Integer.parseInt(n);
+
+      if (num <= 0) {
+        parser.manual_report_error(nleft, nright, "NUM", n);
+        parser.report_reason("Cannot declare a non-positive sized array");
+      }
+
+      RESULT = new ArrayDec(tleft, tright, t, i, num);
+    :}
+  | type_specifier:t ID:i LSQUARE MINUS NUM:n RSQUARE SEMI
+    {:
+      parser.manual_report_error(nleft, nright, "NUM", "-" + n);
+      parser.report_reason("Cannot declare a non-positive sized array");
+
       RESULT = new ArrayDec(tleft, tright, t, i, Integer.parseInt(n));
     :}
   | type_specifier:t ID:i error 
