@@ -28,3 +28,9 @@ clean:
 clean-win: 
 	del *.class parser.java Lexer.java sym.java
 	del .\absyn\*.class
+
+clean-gen:
+	rm -f tests/*.abs tests/*.tm tests/*.sym
+
+clean-gen-win:
+	del .\tests\*.abs .\tests\*.tm .\tests\*.sym

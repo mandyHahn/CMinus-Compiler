@@ -25,8 +25,8 @@ class CM {
   static private void usage() {
     System.out.println("Usage: java -cp <path to cup runtime> CM [ -a | -s | -c ] file.cm");
     System.out.println("  -a : perform syntactic analysis and output an abstract syntax tree (.abs)");
-    System.out.println("  -s : perform type checking and output symbol tables (.sym) -- NOT IMPLEMENTED");
-    System.out.println("  -c : compile and output TM assembly language code (.tm) -- NOT IMPLEMENTED");
+    System.out.println("  -s : perform type checking and output symbol tables (.sym)");
+    System.out.println("  -c : compile and output TM assembly language code (.tm)");
   }
 
   static public void main(String argv[]) {    
