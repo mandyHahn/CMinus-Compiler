@@ -2,7 +2,7 @@
  * This program shows nested loops, void parameter functions, and a = b = n. 
  * It does this by printing a triangle of "1"s with a size of the base given by the user
  * Since there's no "print without newline", the string of 1's must be built
- * as an int, which requires algebra instead. 
+ * as an int, which requires algebra instead. (Note this means max base without overflow = 10)
  */
 
 void printTriangle(void) {

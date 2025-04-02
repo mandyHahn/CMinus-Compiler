@@ -113,7 +113,7 @@ public class SemanticAnalyzer implements AbsynVisitor {
       printAtLevel(node.name + " -> " + simple.type(), level);
     } else if (node.def instanceof ArrayDec) {
       ArrayDec array = (ArrayDec) node.def;
-      printAtLevel(node.name + " -> " + array.type(), level);
+      printAtLevel(node.name + " -> " + array.type(true), level);
     }
   }
 
