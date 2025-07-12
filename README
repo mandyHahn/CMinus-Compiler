@@ -1,11 +1,18 @@
-## CIS*4650 Checkpoint 3
-Group Members:
-Nicholas Waller (nwaller@uoguelph.ca)
-Amanda Hahn (ahahn01@uoguelph.ca)
+# CMinus Compiler
+Created for the Winter 2025 Compilers (CIS*4650) course by Amanda Hahn and Nicholas Waller. Written in Java, using JFlex and CUP. Compiled code is intended to be run in [Kenneth C. Louden's Tiny Machine Simulator](https://www.cs.sjsu.edu/~louden/cmptext/).
 
+## Contact Info
+Nicholas Waller (nwaller@uoguelph.ca / nicholaswaller117@gmail.com)
+Amanda Hahn (ahahn01@uoguelph.ca / mandy@hahnmail.ca)
 
-# Running the Program
-While on the linux.socs.uoguelph.ca servers, type `make` into the console, which will compile the code as necessary for execution.
+## Running the Program
+The following dependencies are needed to use this compiler:
+- JFlex 1.7.0 ([link](https://www.jflex.de/changelog.html))
+- CUP v0.11b ([link](https://www2.cs.tum.edu/projects/cup/))
+
+On a system containing the necessary dependencies, type `make` into the console, which will compile the code as necessary for execution. Note: you may need to update the CLASSPATH variable at the top of the Makefile (as well as in the following commands) with the correct location of your cup.jar file.
+
+Below is listed how to run each step of the compiler. You only need to run the target final step, as all intermediate steps are performed automatically (eg for assembly code generation, syntactic and semantic analysis are performed automatically first). 
 
 ### For syntactic analysis:
 - To test 1.cm, run `java -cp /usr/share/java/cup.jar:. CM -a tests/1.cm`
@@ -26,7 +33,7 @@ While on the linux.socs.uoguelph.ca servers, type `make` into the console, which
 - This will output a file in the directory where the test file is located called `{TEST_FILE_NAME}.tm`
   - For tests/1.cm, a file will be created in the `tests` directory called `1.tm`
 
-# Testing and Explanation
+## Testing and Explanation
 Running the program is simple. 
 
 All tests are in the directory "tests", including the mandatory `1.cm`, `2.cm`, ... required for the assignment. 
