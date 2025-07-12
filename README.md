@@ -1,4 +1,4 @@
-# CMinus Compiler
+# CMinus Compiler 
 Created for the Winter 2025 Compilers (CIS*4650) course by Amanda Hahn and Nicholas Waller. Written in Java, using JFlex and CUP. Compiled code is intended to be run in [Kenneth C. Louden's Tiny Machine Simulator](https://www.cs.sjsu.edu/~louden/cmptext/).
 
 ## Contact Info
