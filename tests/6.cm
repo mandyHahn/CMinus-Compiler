@@ -1,0 +1,21 @@
+/* Expected errors: 
+  line 8 -> Bad comma after param list "invalid parameter declaration" 
+  line 12 -> Can't put a function inside a function "variable declaration needs to end with a semicolon
+    -> This happens since int is a valid variable type, but when declaring a variable it is expected to end with ; instead of (
+  line 20 -> Increment operator is not supported, "Invalid statement"
+*/
+
+/* Invalid trailing comma in header */
+int func_header(int a,);
+
+int main(int one_param, bool two_param) {
+  /* Putting a function inside a function isn't good */
+  int function_inside_function_no_bueno(void) {
+    int a;
+    a = 14;
+    return a;
+  }
+
+  /* invalid statement, ++ increment is not supported */
+  a++;
+}

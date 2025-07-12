@@ -1,0 +1,204 @@
+/* This file attempts to provide a test of all error conditions that have been for
+Expected errors:
+  1.	(line 46)  double prototype declaration
+  2.	(line 50)  double function declaration (matching parameters)
+  3.	(line 54)  mismatched function prototype and declaration (parameters)
+  4.	(line 58)  mismatched function prototype and declaration (return type)
+  5.	(line 62)  prototype after body declaration
+  6.	(line 65)  no return for non-void function (at top scope)
+  7.	(line 71)  undefinied function
+  8.	(line 74)  invalid call (not matching parameter types)
+  9.	(line 77)  invalid call (too many parameters)
+  10.	(line 80)  invalid call (array as non-array parameter)
+  11.	(line 90)  double variable declaration (same type)
+  12.	(line 94)  double variable declaration (conflicting types)
+  13.	(line 97)  bad variable declaration (void)
+  14.	(line 100)  bad array declaration (void)
+  15.	(line 103)  undefined variable
+  16.	(line 106)  undefined array 
+  17.	(line 109)  invalid variable assignment (conflicting types)
+  18.	(line 112)  invalid array assignment (not accessing an index)
+  19.	(line 115)  invalid array assignment (bool index)
+  20.	(line 118)  invalid array assignment (void index)
+  21.	(line 125)  invalid type on left side of arithmetic operator
+  22.	(line 128)  invalid type on right side of arithmetic operator
+  23.	(line 131)  invalid type on right side of UMINUS
+  24.	(line 134)  invalid type on left side of relational operator
+  25.	(line 137)  invalid type on right side of relational operator
+  26.	(line 140)  invalid type on left side of boolean operator
+  27.	(line 143)  invalid type on right side of boolean operator
+  28.	(line 146)  invalid type on right side of NOT
+  29.	(line 149)  using an array as an operand
+  30.	(line 156)  trying to assign a variable declared in an exited scope
+  31.	(line 159)  using an array as a test condition for if
+  32.	(line 162)  using an array as a test condition for while
+  33.	(line 171)  invalid test condition for if (bad type)
+  34.	(line 180)  invalid test condition for while (bad type)
+  35.	(line 183)  invalid return type (mismatched types void --> int)
+  36.	(line 188)  invalid return type (mismatched types int --> bool)
+  37.	(line 199)  invalid return type (returning an array)
+  38.	(no line)  Function main does not exist in scope
+
+*/
+
+/* double prototype declaration */
+void invalid(void);
+void invalid(void);
+
+/* double function declaration (matching parameters) */
+void invalid2(void) { }
+void invalid2(void) { }
+
+/* mismatched function prototype and declaration (parameters) */
+void mismatch( int a );
+void mismatch( bool a ) { }
+
+/* mismatched function prototype and declaration (return type) */
+int mismatch2( void );
+void mismatch2( void ) { }
+
+/* prototype after body declaration */
+void badFunc( void ) { }
+void badFunc( void );
+
+/* no return for non-void function (at top scope) */
+int noReturn( bool a ) { }
+
+int validFunc( int inArr[] ) {
+  bool arr[10];
+
+  /* undefinied function */
+  undefined();
+
+  /* invalid call (not matching parameter types) */
+  noReturn( badFunc() );  /* trying to pass void into a bool */
+
+  /* invalid call (too many parameters) */
+  noReturn( arr[4], false );
+
+  /* invalid call (array as non-array parameter) */
+  noReturn(arr);
+
+  return 4;
+}
+
+void notMain(void) {
+  int arr[10];
+  
+  /* double variable declaration (same type) */
+  int a;
+  int a;
+
+  /* double variable declaration (conflicting types) */
+  int b;
+  bool b;
+
+  /* bad variable declaration (void) */
+  void v;
+  
+  /* bad array declaration (void) */
+  void vArr[10];
+
+  /* undefined variable */
+  a = z;
+  
+  /* undefined array  */
+  a = notAnArr[0];
+
+  /* invalid variable assignment (conflicting types) */
+  a = 5 < 10 + 3 || true;
+
+  /* invalid array assignment (not accessing an index) */
+  arr = 3;
+  
+  /* invalid array assignment (bool index) */
+  arr[false] = 4;
+
+  /* invalid array assignment (void index) */
+  arr[badFunc()] = 5;
+
+  {
+    int x;
+    bool y;
+
+    /* invalid type on left side of arithmetic operator */
+    a = y + x;
+
+    /* invalid type on right side of arithmetic operator */
+    a = 123 * true;
+
+    /* invalid type on right side of UMINUS */
+    a = -y;
+
+    /* invalid type on left side of relational operator */
+    y = badFunc() < 20;
+    
+    /* invalid type on right side of relational operator */
+    y = x >= true;
+
+    /* invalid type on left side of boolean operator */
+    y = badFunc() || 3 || false;
+
+    /* invalid type on right side of boolean operator */
+    y = x && badFunc();
+  
+    /* invalid type on right side of NOT */
+    y = ~ badFunc();
+    
+    /* using an array as an operand */
+    x = arr + 2;
+
+    /* long complicated expression, should be fully valid */
+    y = ~true || 23 / 32 + x >= x && -3 + 5; 
+  }
+
+  /* trying to assign a variable declared in an exited scope */
+  x = 5;
+
+  /* using an array as a test condition for if */
+  if (arr) return;
+
+  /* using an array as a test condition for while */
+  while (arr) a = a + 1;
+
+  /* valid */
+  if (a + 20 * 3) return;
+
+  /* valid */
+  if (false) return;
+
+  /* invalid test condition for if (bad type) */
+  if (badFunc()) return;
+
+  /* valid */
+  while (231) return;
+
+  /* valid */
+  while (a < 230 && false) return;
+
+  /* invalid test condition for while (bad type) */
+  while( badFunc() ) return;
+
+  /* invalid return type (mismatched types void --> int) */
+  return a;
+}
+
+int randFunc(void) {
+  /* invalid return type (mismatched types int --> bool) */
+  return true;
+}
+
+bool randFunc2(void) {
+  /* valid */
+  return 12;
+}
+
+int randFunc3(void) {
+  int arr[20];
+  /* invalid return type (returning an array) */
+  return arr;
+}
+
+
+/* Function main does not exist in scope */
+int main; /* not a function declaration, won't count */

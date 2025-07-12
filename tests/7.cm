@@ -1,0 +1,24 @@
+/* This file demonstrates some type checking errors
+Expected errors:
+  1. (line 15) bad test condition for if statement (test condition is void)
+  2. (line 20) bad array index (bool where int is expected)
+  3. (line 23) bad return (can't return bool from int main())
+*/
+
+void vFunc(void) { }
+
+int main(void) {
+  bool arr[10];
+  bool y;
+
+  /* void test condition */
+  if ( vFunc() ) {
+    return 10;
+  }
+
+  /* bool cannot be used to index array */
+  y = arr[true];
+
+  /* return type should be int not bool */
+  return y;
+}
